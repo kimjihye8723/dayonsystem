@@ -6,6 +6,8 @@ import {
 import axios from 'axios';
 import Sidebar from './Sidebar';
 import TodayContent from './partials/TodayContent';
+import UserInfoContent from './partials/UserInfoContent';
+import RealTimeStatusContent from './partials/RealTimeStatusContent';
 
 interface Tab {
     id: string;
@@ -144,6 +146,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                             </div>
                         </div>
                     </div>
+                    <div className="data-card" style={{
+                        padding: 0,
+                        background: 'var(--bg-card)',
+                        borderRadius: '0.5rem',
+                        border: '1px solid var(--glass-border)',
+                        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02)'
+                    }}>
+                        <table className="data-table" style={{ margin: 0 }}></table>
+                    </div>
 
                     <div className="modal-form-grid" style={{ rowGap: '1rem' }}>
                         <label className="modal-label">사용계정</label>
@@ -178,6 +189,20 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
 };
 
 
+
+// Helper to get tab content component from ID
+const getTabContent = (id: string, theme: 'light' | 'dark'): React.ReactNode => {
+    switch (id) {
+        case 'today':
+            return <TodayContent theme={theme} />;
+        case 'realtime':
+            return <RealTimeStatusContent theme={theme} />;
+        case 'profile':
+            return <UserInfoContent />;
+        default:
+            return null;
+    }
+};
 
 const Dashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -225,11 +250,42 @@ const Dashboard: React.FC = () => {
         };
     }, []);
 
-    // Tab Management State
-    const [tabs, setTabs] = useState<Tab[]>([
-        { id: 'today', title: '투데이', content: <TodayContent theme={theme} /> }
-    ]);
-    const [activeTabId, setActiveTabId] = useState('today');
+    // Tab Management State with Persistence
+    const [tabs, setTabs] = useState<Tab[]>(() => {
+        const savedTabs = localStorage.getItem('open_tabs');
+        const initialTheme = (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
+
+        if (savedTabs) {
+            try {
+                const metadata = JSON.parse(savedTabs);
+                if (Array.isArray(metadata) && metadata.length > 0) {
+                    return metadata.map((m: any) => ({
+                        ...m,
+                        content: getTabContent(m.id, initialTheme)
+                    }));
+                }
+            } catch (e) {
+                console.error('Failed to parse saved tabs:', e);
+            }
+        }
+        // Default initial tab
+        return [{ id: 'today', title: '투데이', content: <TodayContent theme={initialTheme} /> }];
+    });
+
+    const [activeTabId, setActiveTabId] = useState(() => {
+        return localStorage.getItem('active_tab_id') || 'today';
+    });
+
+    // Save tabs metadata to localStorage
+    useEffect(() => {
+        const metadata = tabs.map(({ id, title }) => ({ id, title }));
+        localStorage.setItem('open_tabs', JSON.stringify(metadata));
+    }, [tabs]);
+
+    // Save active tab ID to localStorage
+    useEffect(() => {
+        localStorage.setItem('active_tab_id', activeTabId);
+    }, [activeTabId]);
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -278,6 +334,12 @@ const Dashboard: React.FC = () => {
         setTabs(prevTabs => prevTabs.map(tab => {
             if (tab.id === 'today') {
                 return { ...tab, content: <TodayContent theme={theme} /> };
+            }
+            if (tab.id === 'realtime') {
+                return { ...tab, content: <RealTimeStatusContent theme={theme} /> };
+            }
+            if (tab.id === 'profile') {
+                return { ...tab, content: <UserInfoContent /> };
             }
             return tab;
         }));
@@ -393,7 +455,7 @@ const Dashboard: React.FC = () => {
                             >
                                 {tab.title}
                                 <X
-                                    size={14}
+                                    size={18}
                                     className="tab-close-icon"
                                     onClick={(e) => closeTab(e, tab.id)}
                                 />

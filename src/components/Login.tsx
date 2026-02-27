@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import logoDark from '../assets/logo_godata.png';
-import logoLight from '../assets/logo_godata_light.png';
+import logoDark from '../assets/joot_ams_w.png';
+import logoLight from '../assets/joot_ams_b.png';
 
 import axios from 'axios';
 
@@ -58,23 +58,17 @@ const Login: React.FC = () => {
                     href="http://www.godata.co.kr:90/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{
-                        marginBottom: '1.5rem',
-                        color: 'var(--text-muted)',
-                        textDecoration: 'none',
-                        fontSize: '0.9rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'color 0.2s',
-                        fontWeight: 500,
-                        textAlign: 'right'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--primary)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                    className="godata-link-btn"
                 >
-                    고데이터 바로가기 (www.godata.co.kr:90)
-                    <span style={{ fontSize: '0.7rem' }}>↗</span>
+                    <span className="godata-link-btn-icon">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                        </svg>
+                    </span>
+                    <span className="godata-link-btn-text">고데이터 바로가기</span>
+                    <span className="godata-link-btn-arrow">→</span>
                 </a>
                 <div className="login-header">
                     <img src={theme === 'light' ? logoLight : logoDark} alt="GODATA" className="login-logo" />

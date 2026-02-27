@@ -20,18 +20,23 @@ app.get('/api/health', (req, res) => {
 });
 
 
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
-    database: process.env.DB_NAME
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
 });
 
-db.connect((err) => {
+// Test DB Connection
+db.getConnection((err, connection) => {
     if (err) {
         console.error('Database connection failed:', err.message);
     } else {
-        console.log('Connected to the remote MySQL database.');
+        console.log('Connected to the remote MySQL database (Pool).');
+        connection.release();
     }
 });
 
@@ -46,8 +51,14 @@ app.post('/api/login', (req, res) => {
     const query = 'SELECT * FROM users WHERE account = ? AND password = ?';
     db.query(query, [account, password], (err, results) => {
         if (err) {
-            console.error('Login query error:', err);
-            return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+            console.error('Login query error:', err.message);
+            // Return internal error message only for debugging
+            return res.status(500).json({
+                success: false,
+                message: '서버 오류가 발생했습니다.',
+                error: err.message, // 상세 에러 원인 포함 (운영 시 제거 권장)
+                code: err.code
+            });
         }
 
         if (results.length > 0) {
@@ -55,7 +66,7 @@ app.post('/api/login', (req, res) => {
 
             // Update last login time
             db.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id], (updateErr) => {
-                if (updateErr) console.error('Failed to update last login:', updateErr);
+                if (updateErr) console.error('Failed to update last login:', updateErr.message);
             });
 
             // Don't send password back
@@ -70,7 +81,6 @@ app.post('/api/login', (req, res) => {
 // Update User Info API Endpoint
 app.put('/api/user/update', (req, res) => {
     const { account, name, password, email, phone, profile_img } = req.body;
-    console.log('Update request received:', { account, name, email, phone, hasPassword: !!password, hasImage: !!profile_img });
 
     if (!account) {
         return res.status(400).json({ success: false, message: '계정 정보가 필요합니다.' });
@@ -89,24 +99,25 @@ app.put('/api/user/update', (req, res) => {
 
     db.query(query, params, (err, results) => {
         if (err) {
-            console.error('Update query error:', err);
-            return res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+            console.error('Update query error:', err.message);
+            return res.status(500).json({
+                success: false,
+                message: '서버 오류가 발생했습니다.',
+                error: err.message,
+                code: err.code
+            });
         }
-
-        console.log('Update query results:', results);
 
         if (results.affectedRows > 0) {
             // Fetch updated user info to return
             db.query('SELECT id, account, name, email, phone, profile_img, last_login FROM users WHERE account = ?', [account], (fetchErr, fetchResults) => {
                 if (fetchErr) {
-                    console.error('Fetch updated user error:', fetchErr);
+                    console.error('Fetch updated user error:', fetchErr.message);
                     return res.json({ success: true, message: '정보가 수정되었으나 최신 정보를 불러오지 못했습니다.' });
                 }
-                console.log('Update successful, returning user info');
                 res.json({ success: true, message: '회원정보가 성공적으로 수정되었습니다.', user: fetchResults[0] });
             });
         } else {
-            console.log('No rows affected by update query');
             res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
         }
     });

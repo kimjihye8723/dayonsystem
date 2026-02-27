@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Printer, BarChart3, TrendingUp } from 'lucide-react';
+import { Search, Printer, BarChart3, TrendingUp, UserPlus, UserMinus, Users } from 'lucide-react';
 import Chart from 'react-apexcharts';
 
 interface TodayContentProps {
@@ -337,35 +337,39 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
             {/* Summary Grid - 4 Large Cards */}
             <div className="summary-grid">
                 <div className="summary-card card-sky">
-                    <div className="title">입장</div>
-                    <div className="value-row">
-                        <div className="main-val">{totals.in} <span className="unit">명</span></div>
-                        <div className="sub-val">월간 3,420 <span className="unit">명</span></div>
+                    <div className="card-icon"><UserPlus size={24} /></div>
+                    <div>
+                        <div className="title">입장</div>
+                        <div className="main-val">{totals.in.toLocaleString()} <span className="unit">명</span></div>
                     </div>
+                    <div className="sub-val">월간 3,420 명</div>
                 </div>
 
                 <div className="summary-card card-rose">
-                    <div className="title">퇴장</div>
-                    <div className="value-row">
-                        <div className="main-val">{totals.out} <span className="unit">명</span></div>
-                        <div className="sub-val">월간 2,980 <span className="unit">명</span></div>
+                    <div className="card-icon"><UserMinus size={24} /></div>
+                    <div>
+                        <div className="title">퇴장</div>
+                        <div className="main-val">{totals.out.toLocaleString()} <span className="unit">명</span></div>
                     </div>
+                    <div className="sub-val">월간 2,980 명</div>
                 </div>
 
                 <div className="summary-card card-emerald">
-                    <div className="title">잔류</div>
-                    <div className="value-row">
-                        <div className="main-val">{totals.stay} <span className="unit">명</span></div>
-                        <div className="sub-val">월간 0 <span className="unit">명</span></div>
+                    <div className="card-icon"><Users size={24} /></div>
+                    <div>
+                        <div className="title">잔류</div>
+                        <div className="main-val">{totals.stay.toLocaleString()} <span className="unit">명</span></div>
                     </div>
+                    <div className="sub-val">월간 0 명</div>
                 </div>
 
                 <div className="summary-card card-amber">
-                    <div className="title">합계</div>
-                    <div className="value-row">
-                        <div className="main-val">{totals.total} <span className="unit">명</span></div>
-                        <div className="sub-val">월간 6,400 <span className="unit">명</span></div>
+                    <div className="card-icon"><BarChart3 size={24} /></div>
+                    <div>
+                        <div className="title">합계</div>
+                        <div className="main-val">{totals.total.toLocaleString()} <span className="unit">명</span></div>
                     </div>
+                    <div className="sub-val">월간 6,400 명</div>
                 </div>
             </div>
 

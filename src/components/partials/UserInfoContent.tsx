@@ -90,7 +90,7 @@ const UserInfoContent: React.FC = () => {
     if (!user) return <div style={{ padding: '2rem', color: '#94a3b8' }}>사용자 정보를 불러오는 중...</div>;
 
     return (
-        <div className="data-card animate-fade-in">
+        <div className="animate-fade-in">
             <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '2rem', color: '#f1f5f9', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>회원정보 관리</h2>
 
             <div style={{ maxWidth: '700px' }}>

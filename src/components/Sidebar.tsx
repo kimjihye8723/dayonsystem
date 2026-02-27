@@ -1,9 +1,10 @@
 import React from 'react';
-import { Clock, Users, LogOut, X } from 'lucide-react';
-import logoDark from '../assets/logo_godata.png';
-import logoLight from '../assets/logo_godata_light.png';
+import { Clock, Users, LogOut, X, Activity } from 'lucide-react';
+import logoDark from '../assets/joot_ams_w.png';
+import logoLight from '../assets/joot_ams_b.png';
 import TodayContent from './partials/TodayContent';
 import UserInfoContent from './partials/UserInfoContent';
+import RealTimeStatusContent from './partials/RealTimeStatusContent';
 
 interface SidebarProps {
     activeTabId: string;
@@ -27,7 +28,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="sidebar-header" style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
+                justifyContent: 'center',
                 padding: '1.5rem 1rem',
                 marginBottom: '1rem'
             }}>
@@ -57,6 +58,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }}
                 >
                     <Clock size={20} /> 투데이
+                </a>
+                <a
+                    href="#"
+                    className={`nav-item ${activeTabId === 'realtime' ? 'active' : ''}`}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        onTabSelect('realtime', '실시간 현황', <RealTimeStatusContent theme={theme} />);
+                    }}
+                >
+                    <Activity size={20} /> 실시간 현황
                 </a>
                 <a
                     href="#"
