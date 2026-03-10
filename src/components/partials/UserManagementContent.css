@@ -1,0 +1,150 @@
+/* UserManagementContent.css */
+.um-main-layout {
+    display: flex;
+    gap: 1.5rem;
+    height: calc(100vh - 180px);
+    overflow: hidden;
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* Sidebar List Section */
+.um-sidebar {
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    flex-shrink: 0;
+}
+
+.um-sidebar-filter {
+    /* data-card will provide padding and border-top */
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.um-sidebar-list-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 0 !important; /* data-card has 2rem padding, we override for table */
+}
+
+.um-user-table-wrapper {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.um-user-table-wrapper::-webkit-scrollbar {
+    width: 5px;
+}
+
+.um-user-table-wrapper::-webkit-scrollbar-thumb {
+    background: var(--mgmt-glass-border);
+    border-radius: 10px;
+}
+
+/* Main Detail Section Area */
+.um-detail-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.um-detail-container::-webkit-scrollbar {
+    width: 5px;
+}
+
+.um-detail-container::-webkit-scrollbar-thumb {
+    background: var(--mgmt-glass-border);
+    border-radius: 10px;
+}
+
+
+/* Section Grouping Header Styles */
+.um-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--mgmt-glass-border);
+}
+
+.um-section-bar {
+    width: 4px;
+    height: 18px;
+    background: var(--mgmt-primary);
+    border-radius: 2px;
+}
+
+.um-section-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+/* Sub Tables Grid */
+.um-sub-tables-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.um-sub-table-card {
+    min-height: 280px;
+    display: flex;
+    flex-direction: column;
+    padding: 0 !important; /* Override data-card padding for header/table */
+}
+
+.um-sub-table-header {
+    padding: 1rem 1.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--mgmt-glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.um-sub-table-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+/* Form Elements Grid */
+.um-input-group {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem 1.25rem;
+}
+
+.um-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.um-field-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.red-label {
+    color: #ef4444 !important;
+}
+
+/* Row Selected */
+.um-row-selected td {
+    background: rgba(59, 130, 246, 0.1) !important;
+    color: var(--mgmt-primary) !important;
+    font-weight: 700 !important;
+}
+
+[data-theme='light'] .um-row-selected td {
+    background: rgba(59, 130, 246, 0.05) !important;
+}

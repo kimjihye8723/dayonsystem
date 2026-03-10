@@ -1,4 +1,4 @@
-# 다욘시스템 (Dayon System)
+# 대연시스템 (Dayon System)
 
 React + TypeScript + Vite 프론트엔드와 Express + MySQL 백엔드로 구성된 웹 애플리케이션입니다.
 

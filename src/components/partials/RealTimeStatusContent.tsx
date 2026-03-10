@@ -1,4 +1,5 @@
-import { Activity } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Activity, RefreshCw } from 'lucide-react';
 import WebRTCPlayer from './WebRTCPlayer';
 
 interface RealTimeStatusContentProps {
@@ -12,6 +13,28 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
         male: { in: 82, out: 75 },
         female: { in: 76, out: 67 }
     };
+
+    const [loading, setLoading] = useState(false);
+
+    const handleRefresh = useCallback(async () => {
+        setLoading(true);
+        // Simulate refresh
+        await new Promise(r => setTimeout(r, 500));
+        
+        setLoading(false);
+        console.log("Real-time data refreshed");
+    }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                handleRefresh();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleRefresh]);
 
     // Mock data for hourly table
     const hourlyData = [
@@ -33,6 +56,36 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+            {/* Page Toolbar */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginBottom: '1rem'
+            }}>
+                <button 
+                    onClick={handleRefresh}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '8px 16px',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '0.5rem',
+                        color: 'var(--text-main)',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
+                >
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                    새로고침(F2)
+                </button>
+            </div>
+
             {/* Summary Cards */}
             <div className="summary-grid" style={{ marginBottom: '2.5rem' }}>
                 {/* Total Card */}

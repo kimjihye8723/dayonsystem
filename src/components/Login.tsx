@@ -1,7 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import logoDark from '../assets/joot_ams_w.png';
-import logoLight from '../assets/joot_ams_b.png';
 
 import axios from 'axios';
 
@@ -10,9 +9,7 @@ const Login: React.FC = () => {
     const [account, setAccount] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [rememberId, setRememberId] = React.useState(false);
-    const [theme] = React.useState<'light' | 'dark'>(() => {
-        return (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
-    });
+
 
     // Populate saved account on mount
     React.useEffect(() => {
@@ -33,18 +30,23 @@ const Login: React.FC = () => {
             });
 
             if (response.data.success) {
-                // Store user info if needed
-                localStorage.setItem('user', JSON.stringify(response.data.user));
+                    // 현재 로그인 시간을 최근 접속일로 저장 (Dashboard top-nav 표시용)
+                    localStorage.setItem('prev_last_login', new Date().toISOString());
 
-                // Handle Remember ID
-                if (rememberId) {
-                    localStorage.setItem('savedAccount', account);
-                } else {
-                    localStorage.removeItem('savedAccount');
+                    // Store user info
+                    localStorage.setItem('user', JSON.stringify(response.data.user));
+
+                    // Handle Remember ID
+                    if (rememberId) {
+                        localStorage.setItem('savedAccount', account);
+                    } else {
+                        localStorage.removeItem('savedAccount');
+                    }
+
+                    navigate('/dashboard');
                 }
 
-                navigate('/dashboard');
-            }
+
         } catch (error: any) {
             const message = error.response?.data?.message || '로그인에 실패했습니다. 서버 연결을 확인해주세요.';
             alert(message);
@@ -54,7 +56,7 @@ const Login: React.FC = () => {
     return (
         <div className="login-page">
             <div className="login-card">
-                <a
+                {/* <a
                     href="http://www.godata.co.kr:90/"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -69,9 +71,9 @@ const Login: React.FC = () => {
                     </span>
                     <span className="godata-link-btn-text">고데이터 바로가기</span>
                     <span className="godata-link-btn-arrow">→</span>
-                </a>
+                </a> */}
                 <div className="login-header">
-                    <img src={theme === 'light' ? logoLight : logoDark} alt="GODATA" className="login-logo" />
+                    <img src={logoDark} alt="GODATA" className="login-logo" />
                 </div>
 
                 <form onSubmit={handleLogin}>

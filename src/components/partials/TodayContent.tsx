@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Printer, BarChart3, TrendingUp, UserPlus, UserMinus, Users } from 'lucide-react';
+import { Search, Printer, BarChart3, TrendingUp, UserPlus, UserMinus, Users, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Chart from 'react-apexcharts';
 
 interface TodayContentProps {
@@ -139,6 +139,29 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
         stay: dummyData[dummyData.length - 1].stay,
         total: dummyData.reduce((acc, cur) => acc + cur.total, 0),
     };
+
+    const [loading, setLoading] = useState(false);
+
+    const handleRefresh = useCallback(async () => {
+        setLoading(true);
+        
+        // Simulate re-fetching
+        await new Promise(r => setTimeout(r, 500));
+        
+        setLoading(false);
+        console.log("Data refreshed");
+    }, []);
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F2') {
+                e.preventDefault();
+                handleRefresh();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [handleRefresh]);
 
     const chartOptions: ApexCharts.ApexOptions = {
         chart: {
@@ -303,6 +326,11 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
                         <option>5초</option>
                         <option>1초</option>
                     </select>
+                </div>
+                <div className="filter-group">
+                    <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }} onClick={handleRefresh}>
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> 새로고침(F2)
+                    </button>
                 </div>
                 <div className="filter-group">
                     <button className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', gap: '0.5rem', fontSize: '0.875rem' }}>

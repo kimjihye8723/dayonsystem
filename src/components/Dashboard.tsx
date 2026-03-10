@@ -7,12 +7,16 @@ import axios from 'axios';
 import Sidebar from './Sidebar';
 import TodayContent from './partials/TodayContent';
 import UserInfoContent from './partials/UserInfoContent';
+import BasicCodeContent from './partials/BasicCodeContent';
 import RealTimeStatusContent from './partials/RealTimeStatusContent';
+import BoardManagementContent from './partials/BoardManagementContent';
+import DeviceManagementContent from './partials/DeviceManagementContent';
+import VendorManagementContent from './partials/VendorManagementContent';
+import UserManagementContent from './partials/UserManagementContent';
 
 interface Tab {
     id: string;
     title: string;
-    content: React.ReactNode;
 }
 
 interface ProfileModalProps {
@@ -37,7 +41,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
             if (storedUser) {
                 const userData = JSON.parse(storedUser);
                 setUser(userData);
-                setName(userData.name || '');
+                setName(userData.USER_NM || '');
                 setEmail(userData.email || '');
                 setPhone(userData.phone || '');
                 setProfileImg(userData.profile_img || null);
@@ -158,7 +162,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
 
                     <div className="modal-form-grid" style={{ rowGap: '1rem' }}>
                         <label className="modal-label">사용계정</label>
-                        <input type="text" className="modal-input" value={user?.account || ''} readOnly style={{ background: 'rgba(255,255,255,0.05)', cursor: 'not-allowed', color: '#64748b' }} />
+                        <input type="text" className="modal-input" value={user?.LOGIN_ID || ''} readOnly style={{ background: 'rgba(255,255,255,0.05)', cursor: 'not-allowed', color: '#64748b' }} />
 
                         <label className="modal-label">사용자명</label>
                         <input type="text" className="modal-input" placeholder="사용자명을 입력해주세요." value={name} onChange={(e) => setName(e.target.value)} />
@@ -199,6 +203,16 @@ const getTabContent = (id: string, theme: 'light' | 'dark'): React.ReactNode => 
             return <RealTimeStatusContent theme={theme} />;
         case 'profile':
             return <UserInfoContent />;
+        case 'basiccode':
+            return <BasicCodeContent theme={theme} />;
+        case 'boardmgmt':
+            return <BoardManagementContent theme={theme} />;
+        case 'devicemgmt':
+            return <DeviceManagementContent theme={theme} />;
+        case 'vendormgmt':
+            return <VendorManagementContent theme={theme} />;
+        case 'usermgmt':
+            return <UserManagementContent theme={theme} />;
         default:
             return null;
     }
@@ -210,6 +224,8 @@ const Dashboard: React.FC = () => {
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [user, setUser] = useState<any>(null);
+    // 로그인 시 저장된 최근 접속일 (컴포넌트 마운트 시 1회 읽음)
+    const [prevLastLogin] = useState<string | null>(() => localStorage.getItem('prev_last_login'));
     const [theme, setTheme] = useState<'light' | 'dark'>(() => {
         return (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
     });
@@ -253,23 +269,19 @@ const Dashboard: React.FC = () => {
     // Tab Management State with Persistence
     const [tabs, setTabs] = useState<Tab[]>(() => {
         const savedTabs = localStorage.getItem('open_tabs');
-        const initialTheme = (localStorage.getItem('theme') as 'light' | 'dark') || 'dark';
 
         if (savedTabs) {
             try {
                 const metadata = JSON.parse(savedTabs);
                 if (Array.isArray(metadata) && metadata.length > 0) {
-                    return metadata.map((m: any) => ({
-                        ...m,
-                        content: getTabContent(m.id, initialTheme)
-                    }));
+                    return metadata;
                 }
             } catch (e) {
                 console.error('Failed to parse saved tabs:', e);
             }
         }
         // Default initial tab
-        return [{ id: 'today', title: '투데이', content: <TodayContent theme={initialTheme} /> }];
+        return [{ id: 'today', title: '투데이' }];
     });
 
     const [activeTabId, setActiveTabId] = useState(() => {
@@ -300,11 +312,11 @@ const Dashboard: React.FC = () => {
         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
     };
 
-    const openTab = (id: string, title: string, content: React.ReactNode) => {
+    const openTab = (id: string, title: string) => {
         if (tabs.find(tab => tab.id === id)) {
             setActiveTabId(id);
         } else {
-            setTabs([...tabs, { id, title, content }]);
+            setTabs([...tabs, { id, title }]);
             setActiveTabId(id);
         }
     };
@@ -329,21 +341,7 @@ const Dashboard: React.FC = () => {
         navigate('/login');
     };
 
-    // Sync tabs theme when theme changes
-    useEffect(() => {
-        setTabs(prevTabs => prevTabs.map(tab => {
-            if (tab.id === 'today') {
-                return { ...tab, content: <TodayContent theme={theme} /> };
-            }
-            if (tab.id === 'realtime') {
-                return { ...tab, content: <RealTimeStatusContent theme={theme} /> };
-            }
-            if (tab.id === 'profile') {
-                return { ...tab, content: <UserInfoContent /> };
-            }
-            return tab;
-        }));
-    }, [theme]);
+    // Theme synchronization is now handled directly in render
 
     return (
         <div className="dashboard-layout">
@@ -359,8 +357,8 @@ const Dashboard: React.FC = () => {
 
             <Sidebar
                 activeTabId={activeTabId}
-                onTabSelect={(id, title, content) => {
-                    openTab(id, title, content);
+                onTabSelect={(id, title) => {
+                    openTab(id, title);
                     setIsMobileSidebarOpen(false); // Close on selection
                 }}
                 onLogout={handleLogout}
@@ -433,13 +431,14 @@ const Dashboard: React.FC = () => {
                                         <User size={12} />
                                     )}
                                 </div>
-                                <span style={{ fontWeight: 700 }}>{user ? `${user.name} / ${user.account}` : 'Guest'}</span>
+                                <span style={{ fontWeight: 700 }}>{user ? `${user.USER_NM} / ${user.LOGIN_ID}` : 'Guest'}</span>
                             </div>
-                            {user?.last_login && (
+                            {prevLastLogin && (
                                 <span style={{ fontSize: '0.7rem', color: '#94a3b8', paddingLeft: '1.4rem' }}>
-                                    최근 접속일: {new Date(user.last_login).toLocaleString()}
+                                    최근 접속일: {new Date(prevLastLogin).toLocaleString('ko-KR')}
                                 </span>
                             )}
+
                         </div>
                     </div>
                 </header>
@@ -463,9 +462,19 @@ const Dashboard: React.FC = () => {
                         ))}
                     </div>
 
-                    {/* Active Content Rendering */}
-                    <div className="tab-content-inner">
-                        {tabs.find(tab => tab.id === activeTabId)?.content}
+                    {/* Active Content Rendering with Keep-Alive */}
+                    <div className="tab-content-inner" style={{ position: 'relative' }}>
+                        {tabs.map(tab => (
+                            <div
+                                key={tab.id}
+                                style={{
+                                    display: activeTabId === tab.id ? 'block' : 'none',
+                                    height: '100%'
+                                }}
+                            >
+                                {getTabContent(tab.id, theme)}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </main>
