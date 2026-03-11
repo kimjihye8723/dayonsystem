@@ -1,4 +1,4 @@
-import { Clock, Users, User, LogOut, X, Activity, LayoutDashboard, Database, ClipboardList, FileSpreadsheet, Landmark } from 'lucide-react';
+import { Clock, Users, User, LogOut, X, Activity, LayoutDashboard, Database, ClipboardList } from 'lucide-react';
 import logoDark from '../assets/joot_ams_w.png';
 import logoLight from '../assets/joot_ams_b.png';
 

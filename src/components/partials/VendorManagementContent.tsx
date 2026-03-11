@@ -68,7 +68,6 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
     const [adContractSecs, setAdContractSecs] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [storeStatuses, setStoreStatuses] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [regions, setRegions] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
-    const [banks, setBanks] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [payMethods, setPayMethods] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [payDays, setPayDays] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [billTaxes, setBillTaxes] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
@@ -114,13 +113,12 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
 
     const fetchCategories = useCallback(async () => {
         try {
-            const [catRes, typeRes, adRes, storeRes, regionRes, bankRes, payRes, roundRes, billRes, paydayRes] = await Promise.all([
+            const [catRes, typeRes, adRes, storeRes, regionRes, payRes, roundRes, billRes, paydayRes] = await Promise.all([
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '거래처구분' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '거래처유형' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '광고계약구분' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '거래상태' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '지역1' } }),
-                axios.get('/api/basic-codes/by-name', { params: { groupNm: '은행' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '결제방법' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '소수점관리' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '계산서(부가세)' } }),
@@ -132,7 +130,6 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
             if (adRes.data.success) setAdContractSecs(adRes.data.codes);
             if (storeRes.data.success) setStoreStatuses(storeRes.data.codes);
             if (regionRes.data.success) setRegions(regionRes.data.codes);
-            if (bankRes.data.success) setBanks(bankRes.data.codes);
             if (payRes.data.success) setPayMethods(payRes.data.codes);
             if (roundRes.data.success) setRoundTypes(roundRes.data.codes);
             if (billRes.data.success) setBillTaxes(billRes.data.codes);
