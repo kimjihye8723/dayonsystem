@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Save, Trash2, RefreshCw, Search, FileSpreadsheet, Upload, X, Landmark } from 'lucide-react';
+import { Plus, Save, Trash2, RefreshCw, Search, FileSpreadsheet, Landmark } from 'lucide-react';
 import axios from 'axios';
 import './VendorManagementContent.css';
 
@@ -9,7 +9,7 @@ interface Vendor {
     VENDOR_NM: string;
     VENDOR_SNAME?: string;
     VENDOR_SEC?: string;
-    VENDOR_TYPE?: string;
+    VENDOR_TYP?: string;
     BIZ_NO?: string;
     CORP_NO?: string;
     BIZ_SEC?: string;
@@ -68,6 +68,8 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
     const [adContractSecs, setAdContractSecs] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [storeStatuses, setStoreStatuses] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [regions, setRegions] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
+    const [regions2, setRegions2] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
+    const [regions3, setRegions3] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [payMethods, setPayMethods] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [payDays, setPayDays] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
     const [billTaxes, setBillTaxes] = useState<{ CODE_CD: string, CODE_NM: string }[]>([]);
@@ -82,7 +84,9 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
     const [filterAdSec, setFilterAdSec] = useState('');
 
     // Detail Form State
-    const [formData, setFormData] = useState<Partial<Vendor>>({});
+    const [formData, setFormData] = useState<any>({});
+    const [vendorDevices, setVendorDevices] = useState<any[]>([]);
+    const [vendorManagers, setVendorManagers] = useState<any[]>([]);
 
     const fetchVendors = useCallback(async (overrides?: any) => {
         try {
@@ -113,12 +117,14 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
 
     const fetchCategories = useCallback(async () => {
         try {
-            const [catRes, typeRes, adRes, storeRes, regionRes, payRes, roundRes, billRes, paydayRes] = await Promise.all([
+            const [catRes, typeRes, adRes, storeRes, regionRes, region2Res, region3Res, payRes, roundRes, billRes, paydayRes] = await Promise.all([
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '거래처구분' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '거래처유형' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '광고계약구분' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '거래상태' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '지역1' } }),
+                axios.get('/api/basic-codes/by-name', { params: { groupNm: '지역2' } }),
+                axios.get('/api/basic-codes/by-name', { params: { groupNm: '지역3' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '결제방법' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '소수점관리' } }),
                 axios.get('/api/basic-codes/by-name', { params: { groupNm: '계산서(부가세)' } }),
@@ -130,6 +136,8 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
             if (adRes.data.success) setAdContractSecs(adRes.data.codes);
             if (storeRes.data.success) setStoreStatuses(storeRes.data.codes);
             if (regionRes.data.success) setRegions(regionRes.data.codes);
+            if (region2Res.data.success) setRegions2(region2Res.data.codes);
+            if (region3Res.data.success) setRegions3(region3Res.data.codes);
             if (payRes.data.success) setPayMethods(payRes.data.codes);
             if (roundRes.data.success) setRoundTypes(roundRes.data.codes);
             if (billRes.data.success) setBillTaxes(billRes.data.codes);
@@ -154,9 +162,26 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
         fetchVendors({ vendorNm: '', bizNo: '', useYn: 'ALL', vendorSec: '', vendorType: '', adSec: '' });
     }, [fetchVendors]);
 
-    const handleVendorClick = (v: Vendor) => {
+    const handleVendorClick = async (v: any) => {
         setSelectedVendor(v);
+        // Map any split fields if necessary, or just use DB fields directly
         setFormData(v);
+
+        try {
+            const [devRes, mgrRes] = await Promise.all([
+                axios.get('/api/vendors/devices', { params: { vendorCd: v.VENDOR_CD } }),
+                axios.get('/api/vendors/managers', { params: { vendorCd: v.VENDOR_CD } })
+            ]);
+            if (devRes.data.success) setVendorDevices(devRes.data.devices);
+            else setVendorDevices([]);
+
+            if (mgrRes.data.success) setVendorManagers(mgrRes.data.managers);
+            else setVendorManagers([]);
+        } catch (err) {
+            console.error('Error fetching sub data:', err);
+            setVendorDevices([]);
+            setVendorManagers([]);
+        }
     };
 
     const getCodeName = (codes: { CODE_CD: string, CODE_NM: string }[], code?: string) => {
@@ -171,6 +196,8 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
             VENDOR_CD: '',
             VENDOR_NM: '',
             STOP_YN: 'N',
+            BLE_USEYN: 'N',
+            DAILYREPORT_YN: 'N',
             CORP_CD: '25001'
         });
     };
@@ -231,7 +258,7 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
         const { name, value, type } = e.target as HTMLInputElement;
         const checked = (e.target as HTMLInputElement).checked;
 
-        setFormData(prev => ({
+        setFormData((prev: any) => ({
             ...prev,
             [name]: type === 'checkbox' ? (checked ? 'Y' : 'N') : value
         }));
@@ -251,10 +278,8 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         <ToolbarBtn icon={<RefreshCw size={16} className={loading ? 'animate-spin' : ''} />} label="새로고침(F2)" variant="secondary" onClick={handleRefresh} />
                         <ToolbarBtn icon={<Search size={16} />} label="조회(F3)" variant="primary" onClick={() => fetchVendors()} />
                         <ToolbarBtn icon={<FileSpreadsheet size={16} />} label="엑셀(F7)" variant="success" onClick={() => { }} />
-                        <ToolbarBtn icon={<Upload size={16} />} label="업로드" variant="secondary" onClick={() => { }} />
                         <ToolbarBtn icon={<Save size={16} />} label="저장(F4)" variant="primary" onClick={handleSave} />
                         <ToolbarBtn icon={<Trash2 size={16} />} label="삭제(F8)" variant="danger" onClick={handleDelete} />
-                        <ToolbarBtn icon={<X size={16} />} label="창닫기" variant="secondary" onClick={() => { }} />
                     </div>
                 </div>
             </div>
@@ -262,10 +287,6 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
             <div className="vm-main-layout">
                 {/* Left Sidebar */}
                 <div className="mgmt-card vm-left-sidebar">
-                    <div className="vm-section-header" style={{ padding: '1rem 1rem 0 1rem', borderBottom: 'none', marginBottom: 0 }}>
-                        <div className="vm-section-bar" />
-                        <span className="vm-section-title">조회 조건</span>
-                    </div>
                     <div className="vm-sidebar-filters">
                         <div className="mgmt-form-group">
                             <span className="mgmt-label">회사코드</span>
@@ -319,8 +340,11 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         </div>
                     </div>
 
-                    <div className="vm-list-header-premium">거래처목록</div>
-                    <div className="mgmt-table-wrapper vm-table-wrapper-no-pad">
+                    <div className="vm-subgrid-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>거래처목록</span>
+                        <span style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--text-main)' }}>총 {vendors.length} 건</span>
+                    </div>
+                    <div className="mgmt-table-wrapper vm-table-wrapper-no-pad" style={{ maxHeight: '500px', overflowY: 'auto' }}>
                         <table className="mgmt-table">
                             <thead>
                                 <tr>
@@ -337,9 +361,9 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                                             className={`vm-row ${selectedVendor?.VENDOR_CD === v.VENDOR_CD ? 'selected' : ''}`}
                                             onClick={() => handleVendorClick(v)}
                                         >
-                                            <td className="vm-cell-center">{getCodeName(vendorCategories, v.VENDOR_SEC) || '본사'}</td>
+                                            <td>{getCodeName(vendorCategories, v.VENDOR_SEC) || '-'}</td>
                                             <td>{v.VENDOR_NM}</td>
-                                            <td className="vm-cell-center">{getCodeName(vendorTypes, v.VENDOR_TYPE) || '본사'}</td>
+                                            <td>{getCodeName(vendorTypes, v.VENDOR_TYP) || '-'}</td>
                                         </tr>
                                     ))
                                 ) : (
@@ -354,29 +378,25 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
 
                 {/* Right Content */}
                 <div className="mgmt-card vm-right-content vm-right-content-scroll">
-                    <div className="vm-section-header">
-                        <div className="vm-section-bar" />
-                        <span className="vm-section-title">거래처 정보 등록</span>
-                    </div>
-                    <div className="mgmt-grid">
+                    <div className="mgmt-grid" style={{ maxHeight: '450px', overflowY: 'auto' }}>
                         <div className="mgmt-form-group mgmt-col-span-3">
-                            <label className="mgmt-label required">거래처코드</label>
+                            <label className="mgmt-label vm-label-danger required">거래처코드</label>
                             <input type="text" name="VENDOR_CD" className="mgmt-input" value={formData.VENDOR_CD || ''} onChange={handleInputChange} disabled={!!selectedVendor} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
-                            <label className="mgmt-label required">거래처명</label>
+                            <label className="mgmt-label vm-label-danger required">거래처명</label>
                             <input type="text" name="VENDOR_NM" className="mgmt-input" value={formData.VENDOR_NM || ''} onChange={handleInputChange} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5">
                             <label className="mgmt-label">대표거래처</label>
                             <div className="vm-flex-row">
-                                <input type="text" name="MAIN_VENDOR" className="mgmt-input vm-input-flex" value={formData.MAIN_VENDOR || ''} onChange={handleInputChange} />
+                                <input type="text" className="mgmt-input vm-input-flex" value={vendors.find((v: any) => v.VENDOR_CD === formData.VENDOR_REP)?.VENDOR_NM || formData.VENDOR_REP || ''} readOnly placeholder="선택" />
                                 <button className="mgmt-btn-secondary vm-btn-ellipsis">...</button>
                             </div>
                         </div>
 
                         <div className="mgmt-form-group mgmt-col-span-3">
-                            <label className="mgmt-label">거래처구분</label>
+                            <label className="mgmt-label vm-label-danger">거래처구분</label>
                             <select name="VENDOR_SEC" className="mgmt-select" value={formData.VENDOR_SEC || ''} onChange={handleInputChange}>
                                 <option value=""></option>
                                 {vendorCategories.map(cat => (
@@ -386,71 +406,84 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label">거래처약명</label>
-                            <input type="text" name="VENDOR_SNAME" className="mgmt-input" value={formData.VENDOR_SNAME || ''} onChange={handleInputChange} />
+                            <input type="text" name="VENDOR_SHTNM" className="mgmt-input" value={formData.VENDOR_SHTNM || ''} onChange={handleInputChange} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5">
-                            <div className="vm-check-group" style={{ marginTop: '1.5rem' }}>
+                            <label className="mgmt-label vm-label-primary">거래처 조회 팝업 기준</label>
+                            <div className="vm-check-group" style={{ marginTop: '0.4rem' }}>
                                 <label className="vm-checkbox-item">
-                                    <input type="checkbox" name="IS_STORE" checked={formData.IS_STORE === 'Y'} onChange={handleInputChange} /> 점포
+                                    <input type="radio" name="VENDOR_SEC" value="2" checked={formData.VENDOR_SEC === '2'} onChange={handleInputChange} /> 점포
                                 </label>
                                 <label className="vm-checkbox-item">
-                                    <input type="checkbox" name="IS_ADVERTISER" checked={formData.IS_ADVERTISER === 'Y'} onChange={handleInputChange} /> 광고주
+                                    <input type="radio" name="VENDOR_SEC" value="1" checked={formData.VENDOR_SEC === '1'} onChange={handleInputChange} /> 광고주
                                 </label>
                                 <label className="vm-checkbox-item">
-                                    <input type="checkbox" name="IS_PARTNER" checked={formData.IS_PARTNER === 'Y'} onChange={handleInputChange} /> 협력업체
+                                    <input type="radio" name="VENDOR_SEC" value="99" checked={formData.VENDOR_SEC === '99'} onChange={handleInputChange} /> 협력업체
                                 </label>
                             </div>
                         </div>
 
                         <div className="mgmt-form-group mgmt-col-span-3">
-                            <label className="mgmt-label required">사업자번호</label>
-                            <input type="text" name="BIZ_NO" className="mgmt-input" value={formData.BIZ_NO || ''} onChange={handleInputChange} />
+                            <label className="mgmt-label vm-label-danger required">사업자번호</label>
+                            <input type="text" name="BUSINESS_NO" className="mgmt-input" value={formData.BUSINESS_NO || ''} onChange={handleInputChange} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label">법인번호</label>
                             <div className="vm-flex-row">
-                                <input type="text" name="CORP_NO_1" className="mgmt-input vm-input-corp" />
-                                <span className="vm-time-separator">-</span>
-                                <input type="text" name="CORP_NO_2" className="mgmt-input vm-input-flex" />
+                                <input type="text" name="CORPORATE_NO" className="mgmt-input vm-input-flex" value={formData.CORPORATE_NO || ''} onChange={handleInputChange} />
                             </div>
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5">
-                            <label className="mgmt-label">영업시간지정</label>
+                            <label className="mgmt-label vm-label-primary">영업시간지정</label>
                             <div className="vm-report-flex">
                                 <input type="text" name="OPEN_TIME" className="mgmt-input vm-input-time" value={formData.OPEN_TIME || '00:00'} onChange={handleInputChange} />
                                 <span className="vm-time-separator">~</span>
                                 <input type="text" name="CLOSE_TIME" className="mgmt-input vm-input-time" value={formData.CLOSE_TIME || '00:00'} onChange={handleInputChange} />
-                                <label className="vm-checkbox-item vm-checkbox-ml">
-                                    <input type="checkbox" name="BT_MODULE_YN" checked={formData.BT_MODULE_YN === 'Y'} onChange={handleInputChange} /> 블루투스 모듈
+                                <label className="vm-checkbox-item vm-checkbox-ml vm-label-primary">
+                                    <input type="checkbox" name="BLE_USEYN" checked={formData.BLE_USEYN === 'Y'} onChange={handleInputChange} /> 블루투스 모듈 사용여부(인원계수)
                                 </label>
                             </div>
                         </div>
 
                         <div className="mgmt-form-group mgmt-col-span-3">
                             <label className="mgmt-label">업태</label>
-                            <input type="text" name="BIZ_SEC" className="mgmt-input" value={formData.BIZ_SEC || ''} onChange={handleInputChange} />
+                            <input type="text" name="BUSINESS_SEC" className="mgmt-input" value={formData.BUSINESS_SEC || ''} onChange={handleInputChange} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label">업종</label>
-                            <input type="text" name="BIZ_TYPE" className="mgmt-input" value={formData.BIZ_TYPE || ''} onChange={handleInputChange} />
+                            <input type="text" name="BUSINESS_KND" className="mgmt-input" value={formData.BUSINESS_KND || ''} onChange={handleInputChange} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5">
-                            <label className="mgmt-label">지역구분지정</label>
-                            <select name="REGION_SEC" className="mgmt-select" value={formData.REGION_SEC || ''} onChange={handleInputChange}>
-                                <option value=""></option>
-                                {regions.map(r => (
-                                    <option key={r.CODE_CD} value={r.CODE_CD}>{r.CODE_NM}</option>
-                                ))}
-                            </select>
+                            <label className="mgmt-label vm-label-primary">지역구분지정</label>
+                            <div className="vm-flex-row">
+                                <select name="ADDR_AREA1" className="mgmt-select vm-input-flex" value={formData.ADDR_AREA1 || ''} onChange={handleInputChange}>
+                                    <option value=""></option>
+                                    {regions.map(r => (
+                                        <option key={r.CODE_CD} value={r.CODE_CD}>{r.CODE_NM}</option>
+                                    ))}
+                                </select>
+                                <select name="ADDR_AREA2" className="mgmt-select vm-input-flex" value={formData.ADDR_AREA2 || ''} onChange={handleInputChange}>
+                                    <option value=""></option>
+                                    {regions2.map(r => (
+                                        <option key={r.CODE_CD} value={r.CODE_CD}>{r.CODE_NM}</option>
+                                    ))}
+                                </select>
+                                <select name="ADDR_AREA3" className="mgmt-select vm-input-flex" value={formData.ADDR_AREA3 || ''} onChange={handleInputChange}>
+                                    <option value=""></option>
+                                    {regions3.map(r => (
+                                        <option key={r.CODE_CD} value={r.CODE_CD}>{r.CODE_NM}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
                         <div className="mgmt-form-group mgmt-col-span-3">
                             <label className="mgmt-label">대표자</label>
-                            <input type="text" name="CEO_NM" className="mgmt-input" value={formData.CEO_NM || ''} onChange={handleInputChange} />
+                            <input type="text" name="PRESIDENT_NM" className="mgmt-input" value={formData.PRESIDENT_NM || ''} onChange={handleInputChange} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label">거래처유형</label>
-                            <select name="VENDOR_TYPE" className="mgmt-select" value={formData.VENDOR_TYPE || ''} onChange={handleInputChange}>
+                            <select name="VENDOR_TYP" className="mgmt-select" value={formData.VENDOR_TYP || ''} onChange={handleInputChange}>
                                 <option value=""></option>
                                 {vendorTypes.map(t => (
                                     <option key={t.CODE_CD} value={t.CODE_CD}>{t.CODE_NM}</option>
@@ -458,8 +491,8 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                             </select>
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5">
-                            <label className="mgmt-label">금액 소수점 관리 방법</label>
-                            <select name="ROUND_TYPE" className="mgmt-select" value={formData.ROUND_TYPE || ''} onChange={handleInputChange}>
+                            <label className="mgmt-label vm-label-primary">금액 소수점 관리 방법</label>
+                            <select name="DECIMAL_SEC" className="mgmt-select" value={formData.DECIMAL_SEC || ''} onChange={handleInputChange}>
                                 <option value=""></option>
                                 {roundTypes.map(r => (
                                     <option key={r.CODE_CD} value={r.CODE_CD}>{r.CODE_NM}</option>
@@ -478,9 +511,9 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         <div className="mgmt-form-group mgmt-col-span-5">
                             <label className="mgmt-label">리포트 EMAIL 발송주소</label>
                             <div className="vm-report-flex">
-                                <input type="text" name="REPORT_EMAIL" className="mgmt-input vm-input-flex" value={formData.REPORT_EMAIL || ''} onChange={handleInputChange} />
+                                <input type="text" name="MAINTENANCE_EMAIL" className="mgmt-input vm-input-flex" value={formData.MAINTENANCE_EMAIL || ''} onChange={handleInputChange} />
                                 <label className="vm-checkbox-item">
-                                    <input type="checkbox" name="DAILY_REPORT_YN" checked={formData.DAILY_REPORT_YN === 'Y'} onChange={handleInputChange} /> 데일리 리포트
+                                    <input type="checkbox" name="DAILYREPORT_YN" checked={formData.DAILYREPORT_YN === 'Y'} onChange={handleInputChange} /> 데일리 리포트 처리 여부
                                 </label>
                             </div>
                         </div>
@@ -491,11 +524,11 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label">대표 E-MAIL</label>
-                            <input type="email" name="CEO_EMAIL" className="mgmt-input" value={formData.CEO_EMAIL || ''} onChange={handleInputChange} />
+                            <input type="email" name="EMAIL" className="mgmt-input" value={formData.EMAIL || ''} onChange={handleInputChange} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5">
                             <label className="mgmt-label">광고계약구분</label>
-                            <select name="AD_SEC" className="mgmt-select" value={formData.AD_SEC || ''} onChange={handleInputChange}>
+                            <select name="DEAL_SEC" className="mgmt-select" value={formData.DEAL_SEC || ''} onChange={handleInputChange}>
                                 <option value=""></option>
                                 {adContractSecs.map(a => (
                                     <option key={a.CODE_CD} value={a.CODE_CD}>{a.CODE_NM}</option>
@@ -504,21 +537,27 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         </div>
 
                         <div className="mgmt-form-group mgmt-col-span-3">
-                            <label className="mgmt-label vm-label-primary">거래개시일</label>
-                            <input type="text" name="START_DT" className="mgmt-input" value={formData.START_DT || ''} onChange={handleInputChange} />
+                            <label className="mgmt-label vm-label-danger">거래개시일</label>
+                            <input type="date" name="OPEN_DT" className="mgmt-input" 
+                                value={formData.OPEN_DT ? (formData.OPEN_DT.includes('-') ? formData.OPEN_DT : (formData.OPEN_DT.length >= 8 ? `${formData.OPEN_DT.slice(0,4)}-${formData.OPEN_DT.slice(4,6)}-${formData.OPEN_DT.slice(6,8)}` : '')) : ''} 
+                                onChange={(e) => setFormData((prev: any) => ({ ...prev, OPEN_DT: e.target.value.replace(/-/g, '') }))} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label">거래종료일</label>
-                            <input type="text" name="END_DT" className="mgmt-input" value={formData.END_DT || ''} onChange={handleInputChange} />
+                            <input type="date" name="END_DT" className="mgmt-input" 
+                                value={formData.END_DT ? (formData.END_DT.includes('-') ? formData.END_DT : (formData.END_DT.length >= 8 ? `${formData.END_DT.slice(0,4)}-${formData.END_DT.slice(4,6)}-${formData.END_DT.slice(6,8)}` : '')) : ''} 
+                                onChange={(e) => setFormData((prev: any) => ({ ...prev, END_DT: e.target.value.replace(/-/g, '') }))} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5">
                             <label className="mgmt-label">광고 계약일자</label>
-                            <input type="text" name="AD_START_DT" className="mgmt-input" value={formData.AD_START_DT || ''} onChange={handleInputChange} />
+                            <input type="date" name="PROPERTY_01" className="mgmt-input" 
+                                value={formData.PROPERTY_01 ? (formData.PROPERTY_01.includes('-') ? formData.PROPERTY_01 : (formData.PROPERTY_01.length >= 8 ? `${formData.PROPERTY_01.slice(0,4)}-${formData.PROPERTY_01.slice(4,6)}-${formData.PROPERTY_01.slice(6,8)}` : '')) : ''} 
+                                onChange={(e) => setFormData((prev: any) => ({ ...prev, PROPERTY_01: e.target.value.replace(/-/g, '') }))} />
                         </div>
 
                         <div className="mgmt-form-group mgmt-col-span-3">
                             <label className="mgmt-label">결제방법</label>
-                            <select name="PAY_METHOD" className="mgmt-select" value={formData.PAY_METHOD || ''} onChange={handleInputChange}>
+                            <select name="PAYMENT_TYP" className="mgmt-select" value={formData.PAYMENT_TYP || ''} onChange={handleInputChange}>
                                 <option value=""></option>
                                 {payMethods.map(p => (
                                     <option key={p.CODE_CD} value={p.CODE_CD}>{p.CODE_NM}</option>
@@ -528,28 +567,28 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label">결제은행</label>
                             <div className="vm-flex-row">
-                                <input type="text" name="BANK_NM" className="mgmt-input vm-input-flex" value={formData.BANK_NM || ''} onChange={handleInputChange} />
+                                <input type="text" name="PAYMENT_BANK" className="mgmt-input vm-input-flex" value={formData.PAYMENT_BANK || ''} onChange={handleInputChange} />
                                 <button className="mgmt-btn-secondary vm-btn-ellipsis">...</button>
                             </div>
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5">
                             <label className="mgmt-label">광고 계약금액</label>
-                            <input type="number" name="AD_AMOUNT" className="mgmt-input" value={formData.AD_AMOUNT || 0} onChange={handleInputChange} />
+                            <input type="number" name="MAINTENANCE_AMT" className="mgmt-input" value={formData.MAINTENANCE_AMT || 0} onChange={handleInputChange} />
                         </div>
 
                         <div className="mgmt-form-group mgmt-col-span-3">
-                            <label className="mgmt-label">계사번호</label>
+                            <label className="mgmt-label">계좌번호</label>
                             <input type="text" name="ACCOUNT_NO" className="mgmt-input" value={formData.ACCOUNT_NO || ''} onChange={handleInputChange} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label">예금주명</label>
-                            <input type="text" name="ACCOUNT_NM" className="mgmt-input" value={formData.ACCOUNT_NM || ''} onChange={handleInputChange} />
+                            <input type="text" name="PAYMENT_NM" className="mgmt-input" value={formData.PAYMENT_NM || ''} onChange={handleInputChange} />
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5" />
 
                         <div className="mgmt-form-group mgmt-col-span-3">
                             <label className="mgmt-label">결제예정일자</label>
-                            <select name="PAY_DAY" className="mgmt-select" value={formData.PAY_DAY || ''} onChange={handleInputChange}>
+                            <select name="PAYMENT_DT" className="mgmt-select" value={formData.PAYMENT_DT || ''} onChange={handleInputChange}>
                                 <option value=""></option>
                                 {payDays.map(pd => (
                                     <option key={pd.CODE_CD} value={pd.CODE_CD}>{pd.CODE_NM}</option>
@@ -558,7 +597,7 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label vm-label-primary">계산서</label>
-                            <select name="BILL_TAX" className="mgmt-select" value={formData.BILL_TAX || ''} onChange={handleInputChange}>
+                            <select name="BILL_TYP" className="mgmt-select" value={formData.BILL_TYP || ''} onChange={handleInputChange}>
                                 <option value=""></option>
                                 {billTaxes.map(bt => (
                                     <option key={bt.CODE_CD} value={bt.CODE_CD}>{bt.CODE_NM}</option>
@@ -567,19 +606,19 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-5">
                             <label className="mgmt-label">계산서이메일</label>
-                            <input type="text" name="BILL_EMAIL" className="mgmt-input" value={formData.BILL_EMAIL || ''} onChange={handleInputChange} />
+                            <input type="text" name="TAX_EMAIL" className="mgmt-input" value={formData.TAX_EMAIL || ''} onChange={handleInputChange} />
                         </div>
 
                         <div className="mgmt-form-group mgmt-col-span-3">
                             <label className="mgmt-label vm-label-danger">거래중지여부</label>
-                            <select name="STOP_YN" className="mgmt-select" value={formData.STOP_YN || 'N'} onChange={handleInputChange}>
+                            <select name="CLOSE_YN" className="mgmt-select" value={formData.CLOSE_YN || 'N'} onChange={handleInputChange}>
                                 <option value="Y">예</option>
                                 <option value="N">아니오</option>
                             </select>
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <label className="mgmt-label">거래상태</label>
-                            <select name="STORE_STATUS" className="mgmt-select" value={formData.STORE_STATUS || ''} onChange={handleInputChange}>
+                            <select name="DEAL_TYP" className="mgmt-select" value={formData.DEAL_TYP || ''} onChange={handleInputChange}>
                                 <option value=""></option>
                                 {storeStatuses.map(s => (
                                     <option key={s.CODE_CD} value={s.CODE_CD}>{s.CODE_NM}</option>
@@ -591,16 +630,17 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         <div className="mgmt-form-group mgmt-col-span-8">
                             <label className="mgmt-label vm-label-primary">주소</label>
                             <div className="vm-flex-row">
-                                <input type="text" name="ADDR" className="mgmt-input vm-input-flex" value={formData.ADDR || ''} onChange={handleInputChange} />
+                                <input type="text" name="ADDRESS_HDR" className="mgmt-input vm-input-flex" value={formData.ADDRESS_HDR || ''} onChange={handleInputChange} />
                                 <button className="mgmt-btn-secondary vm-btn-ellipsis">...</button>
+                                <input type="text" name="ADDRESS_DET" className="mgmt-input vm-input-flex" placeholder="상세주소를 입력하세요" value={formData.ADDRESS_DET || ''} onChange={handleInputChange} style={{ marginLeft: '4px' }} />
                             </div>
                         </div>
                         <div className="mgmt-form-group mgmt-col-span-4">
                             <div className="vm-check-group" style={{ marginTop: '1.5rem' }}>
                                 <label className="vm-checkbox-item">
-                                    <input type="checkbox" name="UNPAID_SMS_YN" checked={formData.UNPAID_SMS_YN === 'Y'} onChange={handleInputChange} /> 문자 발송
+                                    <input type="checkbox" name="SMS_ALERTYN" checked={formData.SMS_ALERTYN === 'Y'} onChange={handleInputChange} /> 문자 발송
                                 </label>
-                                <input type="number" name="UNPAID_SMS_DAY" className="mgmt-input" style={{ width: '60px', marginLeft: '8px' }} value={formData.UNPAID_SMS_DAY || 0} onChange={handleInputChange} />
+                                <input type="number" name="SMS_ALERTDAY" className="mgmt-input" style={{ width: '60px', marginLeft: '8px' }} value={formData.SMS_ALERTDAY || 0} onChange={handleInputChange} />
                                 <span className="vm-time-separator" style={{ fontSize: '0.75rem', marginLeft: '4px' }}>일 이후</span>
                             </div>
                         </div>
@@ -626,7 +666,7 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                         <div className="mgmt-form-group mgmt-col-span-3">
                             <label className="mgmt-label">영업담당자</label>
                             <div className="vm-flex-row">
-                                <input type="text" name="SALES_NAME" className="mgmt-input vm-input-flex" value={formData.SALES_NAME || ''} onChange={handleInputChange} />
+                                <input type="text" name="SALES_VENDOR" className="mgmt-input vm-input-flex" value={formData.SALES_VENDOR || ''} onChange={handleInputChange} />
                                 <button className="mgmt-btn-secondary vm-btn-ellipsis">...</button>
                             </div>
                         </div>
@@ -641,7 +681,7 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                     <div className="vm-subgrids-section">
                         <div className="vm-subgrid-box">
                             <div className="vm-subgrid-header">점포별 디바이스 정보</div>
-                            <div className="mgmt-table-wrapper vm-subgrid-table-wrapper">
+                            <div className="mgmt-table-wrapper vm-subgrid-table-wrapper" style={{ flex: 1, overflowY: 'auto' }}>
                                 <table className="mgmt-table">
                                     <thead>
                                         <tr>
@@ -653,16 +693,28 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <td colSpan={5} className="vm-cell-empty">조회된 자료가 없습니다.</td>
-                                        </tr>
+                                        {vendorDevices.length > 0 ? (
+                                            vendorDevices.map((d, i) => (
+                                                <tr key={i}>
+                                                    <td>{d.DEVICE_ID}</td>
+                                                    <td>{d.DEVICE_NM || '-'}</td>
+                                                    <td>{d.DEVICE_LOC || '-'}</td>
+                                                    <td>{d.USE_YN}</td>
+                                                    <td>{d.REMARK || ''}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={5} className="vm-cell-empty">조회된 자료가 없습니다.</td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
                         <div className="vm-subgrid-box vm-subgrid-box-small">
                             <div className="vm-subgrid-header">관리담당자 리스트</div>
-                            <div className="mgmt-table-wrapper vm-subgrid-table-wrapper">
+                            <div className="mgmt-table-wrapper vm-subgrid-table-wrapper" style={{ flex: 1, overflowY: 'auto' }}>
                                 <table className="mgmt-table">
                                     <thead>
                                         <tr>
@@ -671,9 +723,18 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <td colSpan={2} className="vm-cell-empty">조회된 자료가 없습니다.</td>
-                                        </tr>
+                                        {vendorManagers.length > 0 ? (
+                                            vendorManagers.map((m, i) => (
+                                                <tr key={i}>
+                                                    <td>{m.USER_ID}</td>
+                                                    <td>{m.USER_NM}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={2} className="vm-cell-empty">조회된 자료가 없습니다.</td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

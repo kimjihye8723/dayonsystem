@@ -901,6 +901,7 @@ h1 {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .login-header {
@@ -1286,7 +1287,6 @@ h1 {
   justify-content: space-between;
   padding: 0.75rem 1.25rem;
   background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid var(--mgmt-glass-border);
   min-height: 60px;
 }
 
@@ -1354,9 +1354,16 @@ h1 {
 /* Management Form Elements */
 .mgmt-form-group {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
   margin-bottom: 0;
+}
+
+.mgmt-form-group.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
 }
 
 .mgmt-form-group.horizontal {
@@ -1366,14 +1373,16 @@ h1 {
 }
 
 .mgmt-label {
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.4rem;
+  min-width: 123px;
 }
 
 .mgmt-label.required::after {
@@ -1414,10 +1423,10 @@ h1 {
 }
 
 .mgmt-table th {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-card);
   padding: 1rem;
   text-align: left;
-  font-size: 0.75rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -1426,6 +1435,7 @@ h1 {
   position: sticky;
   top: 0;
   z-index: 10;
+  white-space: nowrap;
 }
 
 .mgmt-table td {

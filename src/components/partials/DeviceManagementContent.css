@@ -4,12 +4,13 @@
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
+    from {
+        transform: rotate(0deg);
+    }
 
-.dm-toolbar-card {
-    margin-bottom: 1rem;
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .dm-title-text {
@@ -20,7 +21,6 @@
 }
 
 .dm-filter-card {
-    margin-bottom: 1rem;
     padding: 1.25rem;
     display: flex;
     gap: 2.5rem;
@@ -59,7 +59,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255,255,255,0.02);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .dm-info-text {
@@ -80,11 +80,27 @@
     flex: 1;
 }
 
-.dm-table-col-check { width: 40px; text-align: center; }
-.dm-table-col-id { width: 180px; }
-.dm-table-col-date { width: 130px; }
-.dm-table-col-vendor { width: 220px; }
-.dm-table-col-status { width: 100px; text-align: center; }
+.dm-table-col-check {
+    width: 40px;
+    text-align: center;
+}
+
+.dm-table-col-id {
+    width: 180px;
+}
+
+.dm-table-col-date {
+    width: 130px;
+}
+
+.dm-table-col-vendor {
+    width: 220px;
+}
+
+.dm-table-col-status {
+    width: 100px;
+    text-align: center;
+}
 
 .dm-table-cell-center {
     text-align: center;

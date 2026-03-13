@@ -1,4 +1,4 @@
-import { Clock, Users, User, LogOut, X, Activity, LayoutDashboard, Database, ClipboardList } from 'lucide-react';
+import { Clock, Users, User, LogOut, X, Activity, LayoutDashboard, Database, ClipboardList, FileSpreadsheet, Landmark, ShieldCheck } from 'lucide-react';
 import logoDark from '../assets/joot_ams_w.png';
 import logoLight from '../assets/joot_ams_b.png';
 
@@ -74,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <LayoutDashboard size={20} /> 대시보드
                 </a>
                 <a
-                    href="http://192.168.0.64/"
+                    href="http://smartgate1001.cns-link.net:7002"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="nav-item"
@@ -101,7 +101,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 >
                     <ClipboardList size={20} /> 게시판관리
                 </a>
-                {/* <a
+                <a
                     href="#"
                     className={`nav-item ${activeTabId === 'devicemgmt' ? 'active' : ''}`}
                     onClick={(e) => {
@@ -110,8 +110,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }}
                 >
                     <FileSpreadsheet size={20} /> 장비관리
-                </a> */}
-                {/* <a
+                </a>
+                <a
                     href="#"
                     className={`nav-item ${activeTabId === 'vendormgmt' ? 'active' : ''}`}
                     onClick={(e) => {
@@ -120,7 +120,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }}
                 >
                     <Landmark size={20} /> 거래처관리
-                </a> */}
+                </a>
                 <a
                     href="#"
                     className={`nav-item ${activeTabId === 'usermgmt' ? 'active' : ''}`}
@@ -130,6 +130,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }}
                 >
                     <Users size={20} /> 사용자등록관리
+                </a>
+                <a
+                    href="#"
+                    className={`nav-item ${activeTabId === 'userperm' ? 'active' : ''}`}
+                    onClick={(e) => {
+                        e.preventDefault();
+                        onTabSelect('userperm', '사용자권한관리');
+                    }}
+                >
+                    <ShieldCheck size={20} /> 사용자권한관리
                 </a>
                 <a
                     href="#"

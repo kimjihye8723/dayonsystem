@@ -20,7 +20,7 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
         setLoading(true);
         // Simulate refresh
         await new Promise(r => setTimeout(r, 500));
-        
+
         setLoading(false);
         console.log("Real-time data refreshed");
     }, []);
@@ -62,7 +62,7 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
                 justifyContent: 'flex-end',
                 marginBottom: '1rem'
             }}>
-                <button 
+                <button
                     onClick={handleRefresh}
                     style={{
                         display: 'flex',
@@ -238,7 +238,7 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
                             borderRadius: '4px',
                             zIndex: 10
                         }}>
-                            도안더리브시그니처 정문 입구
+
                         </div>
                     </div>
                 </div>

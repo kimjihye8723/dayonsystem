@@ -13,6 +13,7 @@ import BoardManagementContent from './partials/BoardManagementContent';
 import DeviceManagementContent from './partials/DeviceManagementContent';
 import VendorManagementContent from './partials/VendorManagementContent';
 import UserManagementContent from './partials/UserManagementContent';
+import UserPermissionManagementContent from './partials/UserPermissionManagementContent';
 
 interface Tab {
     id: string;
@@ -111,15 +112,15 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h3>회원정보 수정</h3>
-                    <X size={18} onClick={onClose} style={{ cursor: 'pointer', color: '#64748b' }} />
+                    <h3 style={{ color: 'var(--text-main)' }}>회원정보 수정</h3>
+                    <X size={18} onClick={onClose} style={{ cursor: 'pointer', color: 'var(--text-muted)' }} />
                 </div>
                 <div className="modal-body">
                     <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{ display: 'none' }} accept="image/*" />
                     <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem' }}>
                         <div style={{ flex: 1 }} className="modal-form-grid">
                             <span className="modal-label">소속기업</span>
-                            <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>현대보안월드</span>
+                            <span style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '1.1rem' }}>현대보안월드</span>
 
                             <span className="modal-label">소속매장</span>
                             <span style={{ color: '#94a3b8' }}>-</span>
@@ -213,6 +214,8 @@ const getTabContent = (id: string, theme: 'light' | 'dark'): React.ReactNode => 
             return <VendorManagementContent theme={theme} />;
         case 'usermgmt':
             return <UserManagementContent theme={theme} />;
+        case 'userperm':
+            return <UserPermissionManagementContent theme={theme} />;
         default:
             return null;
     }

@@ -91,7 +91,7 @@ const UserInfoContent: React.FC = () => {
 
     return (
         <div className="animate-fade-in">
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '2rem', color: '#f1f5f9', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem' }}>회원정보 관리</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '2rem', color: 'var(--text-main)', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>회원정보 관리</h2>
 
             <div style={{ maxWidth: '700px' }}>
                 <form onSubmit={handleUpdate}>
@@ -107,7 +107,7 @@ const UserInfoContent: React.FC = () => {
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2.5rem', padding: '0 0.5rem' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '1rem 2rem', alignItems: 'center' }}>
                             <span className="modal-label" style={{ marginBottom: 0 }}>소속기업</span>
-                            <span style={{ color: '#f1f5f9', fontWeight: 700, fontSize: '1.1rem' }}>현대보안월드</span>
+                            <span style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '1.1rem' }}>현대보안월드</span>
 
                             <span className="modal-label" style={{ marginBottom: 0 }}>소속매장</span>
                             <span style={{ color: '#94a3b8' }}>-</span>
@@ -117,8 +117,8 @@ const UserInfoContent: React.FC = () => {
                             <div className="profile-img-placeholder" style={{
                                 width: '100px',
                                 height: '100px',
-                                background: 'rgba(30, 41, 59, 0.5)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'var(--input-bg)',
+                                border: '1px solid var(--glass-border)',
                                 overflow: 'hidden',
                                 position: 'relative'
                             }}>

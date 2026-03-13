@@ -250,6 +250,7 @@ const BoardManagementContent: React.FC<Props> = ({ theme }) => {
             <div className="bm-main-wrapper">
                 {/* Sidebar - List Area */}
                 <div className="mgmt-card bm-sidebar-card">
+                    <div className="vm-subgrid-header">게시판 목록</div>
                     <div className="bm-list-count-wrapper">
                         <div className="bm-list-count">{boards.length} 건</div>
                     </div>

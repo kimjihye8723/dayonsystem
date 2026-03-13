@@ -132,7 +132,7 @@
 }
 
 .bc-header-label {
-    font-size: 0.75rem;
+    font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-muted);
     text-transform: uppercase;
@@ -208,58 +208,54 @@
 }
 
 .bc-table-wrapper .mgmt-table tr {
-    display: table;
+    display: flex;
     width: 100%;
-    table-layout: fixed;
 }
 
 .bc-col-check {
-    width: 40px;
+    flex: 0 0 40px;
     text-align: center;
 }
 
 .bc-col-no {
-    width: 50px;
+    flex: 0 0 50px;
     text-align: center;
 }
 
 .bc-col-code {
-    width: 120px;
+    flex: 0 0 120px;
 }
 
 .bc-col-name {
-    width: 180px;
-}
-
-.bc-col-prop {
-    width: 100px;
+    flex: 0 0 250px;
 }
 
 .bc-col-desc {
-    min-width: 160px;
+    flex: 1;
+    min-width: 250px;
 }
 
 .bc-col-yn {
-    width: 80px;
+    flex: 0 0 80px;
     text-align: center;
 }
 
 .bc-col-status {
-    width: 100px;
+    flex: 0 0 100px;
     text-align: center;
 }
 
 .bc-col-system {
-    width: 80px;
+    flex: 0 0 80px;
     text-align: center;
 }
 
 .bc-col-rel {
-    width: 100px;
+    flex: 0 0 100px;
 }
 
 .bc-col-sort {
-    width: 60px;
+    flex: 0 0 60px;
     text-align: center;
 }
 
@@ -286,7 +282,11 @@
 .bc-table-input {
     border: none !important;
     background: transparent !important;
-    padding: 0 !important;
+    padding: 0.25rem 0.5rem !important;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .bc-table-input-code {

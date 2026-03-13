@@ -381,7 +381,7 @@
 
 .vm-list-header-premium {
     padding: 0.75rem 1.25rem;
-    background: rgba(255,255,255,0.02);
+    background: rgba(255, 255, 255, 0.02);
     border-bottom: 1px solid var(--mgmt-glass-border);
     font-size: 0.75rem;
     font-weight: 800;
@@ -436,11 +436,11 @@
 }
 
 .vm-label-primary {
-    color: var(--mgmt-primary);
+    color: var(--mgmt-primary) !important;
 }
 
 .vm-label-danger {
-    color: var(--mgmt-danger);
+    color: var(--mgmt-danger) !important;
 }
 
 .vm-textarea-desc {
@@ -457,7 +457,6 @@
 }
 
 .vm-status-bar-premium {
-    margin-top: 1rem;
     padding: 0.75rem 1.25rem;
     display: flex;
     justify-content: space-between;
@@ -501,4 +500,35 @@
     font-size: 0.95rem;
     font-weight: 700;
     color: var(--text-main);
+}
+
+/* Custom Scrollbar */
+.vm-right-content-scroll::-webkit-scrollbar,
+.mgmt-grid::-webkit-scrollbar,
+.vm-table-wrapper-no-pad::-webkit-scrollbar,
+.vm-subgrid-table-wrapper::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.vm-right-content-scroll::-webkit-scrollbar-track,
+.mgmt-grid::-webkit-scrollbar-track,
+.vm-table-wrapper-no-pad::-webkit-scrollbar-track,
+.vm-subgrid-table-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.vm-right-content-scroll::-webkit-scrollbar-thumb,
+.mgmt-grid::-webkit-scrollbar-thumb,
+.vm-table-wrapper-no-pad::-webkit-scrollbar-thumb,
+.vm-subgrid-table-wrapper::-webkit-scrollbar-thumb {
+    background: var(--mgmt-primary-glow);
+    border-radius: 4px;
+}
+
+.vm-right-content-scroll::-webkit-scrollbar-thumb:hover,
+.mgmt-grid::-webkit-scrollbar-thumb:hover,
+.vm-table-wrapper-no-pad::-webkit-scrollbar-thumb:hover,
+.vm-subgrid-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--mgmt-primary);
 }

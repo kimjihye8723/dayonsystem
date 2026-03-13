@@ -1,0 +1,115 @@
+/* UserPermissionManagementContent.css */
+
+.perm-layout-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: calc(100vh - 220px);
+    overflow: hidden;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.perm-grid-row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.perm-top-row {
+    height: 35%;
+}
+
+.perm-bottom-row {
+    height: 65%;
+}
+
+.perm-card-user-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.perm-card-copy-box {
+    flex: 1.2;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.perm-card-program-perm {
+    flex: 1.5;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.perm-card-pc-auth {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Custom Table Overrides for UM Permission */
+.perm-table-sticky thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.perm-id-cell {
+    font-size: 11px;
+}
+
+.perm-date-cell {
+    font-size: 11px;
+    text-align: center;
+}
+
+/* Filter Bar Specifics */
+.perm-filter-bar {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.perm-filter-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.perm-filter-label {
+    margin-bottom: 0 !important;
+    width: auto !important;
+}
+
+.perm-filter-input-small {
+    width: 100px;
+}
+
+.perm-filter-select-medium {
+    width: 130px;
+}
+
+.perm-filter-search-input {
+    max-width: 250px;
+}
+
+.perm-copy-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.perm-copy-target-name {
+    color: var(--mgmt-primary);
+    font-weight: 700;
+}
+
+.perm-copy-action-text {
+    font-size: 11px;
+    color: var(--text-muted);
+}

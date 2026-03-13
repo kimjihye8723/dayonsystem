@@ -2,6 +2,7 @@ import express from 'express';
 import mysql from 'mysql2';
 import cors from 'cors';
 import 'dotenv/config';
+import * as XLSX from 'xlsx';
 
 const app = express();
 app.use(cors());
@@ -13,13 +14,6 @@ app.use((req, res, next) => {
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
-
-// Health Check Endpoint
-app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString() });
-});
-
-
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -126,18 +120,16 @@ const PORT = process.env.PORT || 5000;
 // 장비 목록 조회 - TCM_VENDOR_DEVICE 기반, TCM_VENDOR JOIN으로 거래처명 포함
 app.get('/api/devices', (req, res) => {
     const { startDate, endDate, vendorNm } = req.query;
-
     let query = `
-        SELECT d.*, v.VENDOR_NM
-        FROM TCM_VENDOR_DEVICE d
-        LEFT JOIN TCM_VENDOR v ON d.CORP_CD = v.CORP_CD AND d.VENDOR_CD = v.VENDOR_CD
+        SELECT d.*, v.VENDOR_NM AS USE_VENDOR_NM
+        FROM TCM_DEVICEINFO d
+        LEFT JOIN TCM_VENDOR v ON d.CORP_CD = v.CORP_CD AND d.USE_VENDOR = v.VENDOR_CD
         WHERE d.CORP_CD = '25001'
     `;
     const params = [];
 
-    // REGISTDT(datetime) 기준 날짜 필터 - YYYYMMDD 형식 수신
-    if (startDate) { query += " AND DATE_FORMAT(d.REGISTDT, '%Y%m%d') >= ?"; params.push(startDate); }
-    if (endDate)   { query += " AND DATE_FORMAT(d.REGISTDT, '%Y%m%d') <= ?"; params.push(endDate); }
+    if (startDate) { query += " AND d.INPUT_DT >= ?"; params.push(startDate); }
+    if (endDate)   { query += " AND d.INPUT_DT <= ?"; params.push(endDate); }
     if (vendorNm)  { query += ' AND v.VENDOR_NM LIKE ?'; params.push(`%${vendorNm}%`); }
 
     query += ' ORDER BY d.REGISTDT DESC';
@@ -167,29 +159,52 @@ app.post('/api/devices/save', (req, res) => {
     };
 
     const finalize = () => {
-        if (errors.length > 0) res.status(500).json({ success: false, errors });
-        else res.json({ success: true, message: '저장되었습니다.' });
+        if (errors.length > 0) {
+            res.status(500).json({ success: false, errors });
+        } else {
+            // Delete devices not in the current list (Sync)
+            const currentIds = devices.map(d => d.DEVICE_ID).filter(id => id);
+            if (currentIds.length > 0) {
+                const placeholders = currentIds.map(() => '?').join(', ');
+                const delSql = `DELETE FROM TCM_DEVICEINFO WHERE CORP_CD='25001' AND DEVICE_ID NOT IN (${placeholders})`;
+                db.query(delSql, currentIds, (err) => {
+                    if (err) res.status(500).json({ success: false, error: err.message });
+                    else res.json({ success: true, message: '동기화되었습니다.' });
+                });
+            } else {
+                res.json({ success: true, message: '저장되었습니다.' });
+            }
+        }
     };
 
     devices.forEach(d => {
-        if (d.DEVICE_KEY) {
-            // 기존 레코드 수정
-            const sql = `UPDATE TCM_VENDOR_DEVICE SET DEVICE_ID=?, VENDOR_CD=?, DEVICE_NM=?, POSITION_NM=?, USE_YN=?, REMARK=?, MODIFYDT=NOW(), MODIFYUSER='ADMIN'
-                         WHERE CORP_CD='25001' AND DEVICE_KEY=?`;
-            db.query(sql, [d.DEVICE_ID, d.VENDOR_CD, d.DEVICE_NM, d.POSITION_NM, d.USE_YN, d.REMARK || '', d.DEVICE_KEY], (e) => {
-                if (e) errors.push(e.message);
+        // Find if device already exists to decide between INSERT or UPDATE
+        const checkSql = "SELECT DEVICE_ID FROM TCM_DEVICEINFO WHERE CORP_CD='25001' AND DEVICE_ID=?";
+        db.query(checkSql, [d.DEVICE_ID], (err, results) => {
+            if (err) {
+                errors.push(err.message);
                 if (++completed === devices.length) finalize();
-            });
-        } else {
-            // 신규 레코드 삽입 - DEVICE_KEY 자동 채번
-            const newKey = generateKey();
-            const sql = `INSERT INTO TCM_VENDOR_DEVICE (CORP_CD, DEVICE_KEY, DEVICE_ID, VENDOR_CD, DEVICE_NM, POSITION_NM, USE_YN, REMARK, REGISTDT, REGISTUSER)
-                         VALUES ('25001', ?, ?, ?, ?, ?, ?, ?, NOW(), 'ADMIN')`;
-            db.query(sql, [newKey, d.DEVICE_ID || '', d.VENDOR_CD || '', d.DEVICE_NM || '', d.POSITION_NM || '', d.USE_YN || 'Y', d.REMARK || ''], (e) => {
-                if (e) errors.push(e.message);
-                if (++completed === devices.length) finalize();
-            });
-        }
+                return;
+            }
+
+            if (results && results.length > 0) {
+                // Update existing
+                const sql = `UPDATE TCM_DEVICEINFO SET INPUT_DT=?, OUTPUT_DT=?, DISPOSE_DT=?, USE_VENDOR=?, USE_YN=?, REMARK=?, MODIFYDT=NOW(), MODIFYUSER='ADMIN'
+                             WHERE CORP_CD='25001' AND DEVICE_ID=?`;
+                db.query(sql, [d.INPUT_DT || '', d.OUTPUT_DT || '', d.DISPOSE_DT || '', d.USE_VENDOR || '', d.USE_YN, d.REMARK || '', d.DEVICE_ID], (e) => {
+                    if (e) errors.push(e.message);
+                    if (++completed === devices.length) finalize();
+                });
+            } else {
+                // Insert new
+                const sql = `INSERT INTO TCM_DEVICEINFO (CORP_CD, DEVICE_ID, INPUT_DT, OUTPUT_DT, DISPOSE_DT, USE_VENDOR, USE_YN, REMARK, REGISTDT, REGISTUSER)
+                             VALUES ('25001', ?, ?, ?, ?, ?, ?, ?, NOW(), 'ADMIN')`;
+                db.query(sql, [d.DEVICE_ID, d.INPUT_DT || '', d.OUTPUT_DT || '', d.DISPOSE_DT || '', d.USE_VENDOR || '', d.USE_YN || 'Y', d.REMARK || ''], (e) => {
+                    if (e) errors.push(e.message);
+                    if (++completed === devices.length) finalize();
+                });
+            }
+        });
     });
 });
 
@@ -199,11 +214,35 @@ app.delete('/api/devices', (req, res) => {
     if (!deviceKeys || !Array.isArray(deviceKeys) || deviceKeys.length === 0)
         return res.status(400).json({ success: false, message: 'deviceKeys 배열이 필요합니다.' });
     const placeholders = deviceKeys.map(() => '?').join(', ');
-    const sql = `DELETE FROM TCM_VENDOR_DEVICE WHERE CORP_CD = '25001' AND DEVICE_KEY IN (${placeholders})`;
+    const sql = `DELETE FROM TCM_DEVICEINFO WHERE CORP_CD = '25001' AND DEVICE_ID IN (${placeholders})`;
     db.query(sql, deviceKeys, (err) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
         res.json({ success: true, message: '삭제되었습니다.' });
     });
+});
+
+// 장비 업로드용 엑셀 템플릿 다운로드
+app.get('/api/device-template', (req, res) => {
+    try {
+        const headers = ['장비ID', '입고일자', '사용일자', '폐기일자', '점포코드', '사용가능여부', '비고'];
+        const data = [
+            ['DEVICE001', '20240101', '20240105', '', '25001', 'Y', '신규장비'],
+            ['DEVICE002', '20240201', '', '', '22002', 'Y', '테스트용']
+        ];
+        
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        XLSX.utils.book_append_sheet(wb, ws, 'Template');
+        
+        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=Device_Template.xlsx');
+        res.send(buf);
+    } catch (err) {
+        console.error('Template error:', err);
+        res.status(500).json({ success: false, message: '템플릿 생성 실패' });
+    }
 });
 
 // ========== User Management APIs ==========
@@ -354,7 +393,7 @@ app.delete('/api/users/:userId', (req, res) => {
 
 app.get('/api/boards', (req, res) => {
     const { startDate, endDate, title, boardSec } = req.query;
-    let query = "SELECT * FROM TCM_BOARD WHERE CORP_CD = '22002'";
+    let query = "SELECT * FROM TCM_BOARD WHERE CORP_CD = '22002' AND USE_YN = 'Y'";
     const params = [];
     if (startDate) { query += " AND REG_DT >= ?"; params.push(startDate); }
     if (endDate) { query += " AND REG_DT <= ?"; params.push(endDate); }
@@ -366,7 +405,6 @@ app.get('/api/boards', (req, res) => {
     db.query(query, params, (err, results) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
         
-        // Convert BLOB to string
         const formattedBoards = results.map(b => ({
             ...b,
             TX_CONTENTS: b.TX_CONTENTS ? b.TX_CONTENTS.toString() : ''
@@ -391,10 +429,9 @@ app.get('/api/boards/:boardNo', (req, res) => {
     });
 });
 
-// 게시글 신규 등록 - BOARD_NO는 DB 자동 채번(AUTO_INCREMENT) 또는 MAX+1 방식
+// 게시글 신규 등록
 app.post('/api/boards', (req, res) => {
     const b = req.body;
-    // BOARD_NO 최대값 기준 채번 (AUTO_INCREMENT 미사용 가정)
     const maxQuery = "SELECT IFNULL(MAX(CAST(BOARD_NO AS UNSIGNED)), 0) + 1 AS NEXT_NO FROM TCM_BOARD WHERE CORP_CD = '22002'";
     db.query(maxQuery, (err, maxResult) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
@@ -408,24 +445,11 @@ app.post('/api/boards', (req, res) => {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
         `;
         const params = [
-            '22002',
-            nextNo,
-            b.REG_DT || new Date().toISOString().slice(0, 10).replace(/-/g, ''),
-            b.REG_USER || 'ADMIN',
-            b.BOARD_SEC || '01',
-            b.TARGET_USERSEC || 'ALL',
-            b.TARGET_YN || 'N',
-            b.TOP_YN || 'N',
-            b.START_DT,
-            b.END_DT,
-            b.TX_TITLE,
-            b.TX_CONTENTS || '',
-            b.POPUP_YN || 'N',
-            b.USE_YN || 'Y',
-            b.REMARK || '',
-            'ADMIN'
+            '22002', nextNo, b.REG_DT || new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+            b.REG_USER || 'ADMIN', b.BOARD_SEC || '01', b.TARGET_USERSEC || 'ALL', b.TARGET_YN || 'N',
+            b.TOP_YN || 'N', b.START_DT, b.END_DT, b.TX_TITLE, b.TX_CONTENTS || '', b.POPUP_YN || 'N',
+            b.USE_YN || 'Y', b.REMARK || '', 'ADMIN'
         ];
-        console.log('[API] Saving Board (POST):', { query, params });
         db.query(query, params, (e) => {
             if (e) return res.status(500).json({ success: false, message: e.message });
             res.json({ success: true, message: '등록되었습니다.', boardNo: nextNo });
@@ -433,10 +457,9 @@ app.post('/api/boards', (req, res) => {
     });
 });
 
-// 게시글 수정 - BOARD_NO 기준으로 기존 글 업데이트
+// 게시글 수정
 app.put('/api/boards', (req, res) => {
     const b = req.body;
-    if (!b.BOARD_NO) return res.status(400).json({ success: false, message: 'BOARD_NO가 필요합니다.' });
     const query = `
         UPDATE TCM_BOARD SET
             BOARD_SEC = ?, TARGET_USERSEC = ?, TARGET_YN = ?, TOP_YN = ?,
@@ -446,57 +469,33 @@ app.put('/api/boards', (req, res) => {
         WHERE CORP_CD = '22002' AND BOARD_NO = ?
     `;
     const params = [
-        b.BOARD_SEC || '01', 
-        b.TARGET_USERSEC || 'ALL', 
-        b.TARGET_YN || 'N', 
-        b.TOP_YN || 'N',
-        b.START_DT, 
-        b.END_DT, 
-        b.TX_TITLE, 
-        b.TX_CONTENTS || '',
-        b.POPUP_YN || 'N', 
-        b.USE_YN || 'Y', 
-        b.REMARK || '',
-        b.BOARD_NO
+        b.BOARD_SEC || '01', b.TARGET_USERSEC || 'ALL', b.TARGET_YN || 'N', b.TOP_YN || 'N',
+        b.START_DT, b.END_DT, b.TX_TITLE, b.TX_CONTENTS || '', b.POPUP_YN || 'N', b.USE_YN || 'Y',
+        b.REMARK || '', b.BOARD_NO
     ];
-    console.log('[API] Updating Board (PUT):', { query, params });
-    db.query(query, params, (err, results) => {
+    db.query(query, params, (err) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, message: '수정되었습니다.' });
     });
 });
 
-// 게시글 삭제 - boardNos 배열로 다중 삭제 지원
+// 게시글 삭제
 app.delete('/api/boards', (req, res) => {
     const { boardNos } = req.body;
-    if (!boardNos || !Array.isArray(boardNos) || boardNos.length === 0)
-        return res.status(400).json({ success: false, message: 'boardNos 배열이 필요합니다.' });
     const placeholders = boardNos.map(() => '?').join(', ');
-    const query = `DELETE FROM TCM_BOARD WHERE CORP_CD = '22002' AND BOARD_NO IN (${placeholders})`;
-    db.query(query, boardNos, (err, results) => {
+    const query = `UPDATE TCM_BOARD SET USE_YN = 'N', MODIFYDT = NOW(), MODIFYUSER = 'ADMIN' WHERE CORP_CD = '22002' AND BOARD_NO IN (${placeholders})`;
+    db.query(query, boardNos, (err) => {
         if (err) return res.status(500).json({ success: false, message: err.message });
         res.json({ success: true, message: '삭제되었습니다.' });
     });
 });
 
 // ========== Basic Code Management APIs ==========
-
-// Get codes by group name (Used for vendor dropdowns)
 app.get('/api/basic-codes/by-name', (req, res) => {
     const { groupNm } = req.query;
-    console.log('[API] Fetching basic codes for groupNm:', groupNm);
-    if (!groupNm) return res.status(400).json({ success: false, message: 'groupNm is required' });
-
-    // Explicitly use 25001 and handle exact match.
-    const query = `
-        SELECT CODE_CD, CODE_NM 
-        FROM TCM_BASIC 
-        WHERE CORP_CD = '25001' AND GROUP_NM = ? AND USE_YN = 'Y'
-        ORDER BY SORT_SEQ, CODE_CD
-    `;
+    const query = "SELECT CODE_CD, CODE_NM FROM TCM_BASIC WHERE CORP_CD = '25001' AND GROUP_NM = ? AND USE_YN = 'Y' ORDER BY SORT_SEQ, CODE_CD";
     db.query(query, [groupNm], (err, results) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
-        console.log(`[API] Found ${results ? results.length : 0} codes for ${groupNm}`);
         res.json({ success: true, codes: results });
     });
 });
@@ -509,11 +508,8 @@ app.get('/api/basic-codes/groups', (req, res) => {
     });
 });
 
-// Get codes for a specific group
 app.get('/api/basic-codes', (req, res) => {
     const { groupCd } = req.query;
-    if (!groupCd) return res.status(400).json({ success: false, message: 'groupCd is required' });
-
     const query = "SELECT * FROM TCM_BASIC WHERE CORP_CD = '25001' AND GROUP_CD = ? ORDER BY SORT_SEQ, CODE_CD";
     db.query(query, [groupCd], (err, results) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
@@ -521,99 +517,60 @@ app.get('/api/basic-codes', (req, res) => {
     });
 });
 
-// Create new basic code
 app.post('/api/basic-codes', (req, res) => {
     const code = req.body;
     const query = `
-        INSERT INTO TCM_BASIC (
-            CORP_CD, GROUP_CD, CODE_CD, GROUP_NM, CODE_NM, 
-            CODE_PROP1, CODE_PROP2, CODE_PROP3, DESCRIPTION_TX, 
-            DEFAULT_YN, USE_YN, SYSTEM_YN, RELATION_CD, SORT_SEQ, REMARK, REGISTUSER
-        ) VALUES ('25001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ADMIN')
+        INSERT INTO TCM_BASIC (CORP_CD, GROUP_CD, CODE_CD, GROUP_NM, CODE_NM, CODE_PROP1, CODE_PROP2, CODE_PROP3, DESCRIPTION_TX, DEFAULT_YN, USE_YN, SYSTEM_YN, RELATION_CD, SORT_SEQ, REMARK, REGISTUSER, REGISTDT)
+        VALUES ('25001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ADMIN', NOW())
     `;
-    const params = [
-        code.GROUP_CD, code.CODE_CD, code.GROUP_NM, code.CODE_NM,
-        code.CODE_PROP1, code.CODE_PROP2, code.CODE_PROP3, code.DESCRIPTION_TX,
-        code.DEFAULT_YN || 'N', code.USE_YN || 'Y', code.SYSTEM_YN || 'N',
-        code.RELATION_CD, code.SORT_SEQ || 0, code.REMARK
-    ];
-
-    db.query(query, params, (err, results) => {
+    db.query(query, [code.GROUP_CD, code.CODE_CD, code.GROUP_NM, code.CODE_NM, code.CODE_PROP1, code.CODE_PROP2, code.CODE_PROP3, code.DESCRIPTION_TX, code.DEFAULT_YN || 'N', code.USE_YN || 'Y', code.SYSTEM_YN || 'N', code.RELATION_CD, code.SORT_SEQ || 0, code.REMARK], (err) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
         res.json({ success: true, message: '등록되었습니다.' });
     });
 });
 
-// Update basic code
 app.put('/api/basic-codes', (req, res) => {
     const code = req.body;
     const query = `
-        UPDATE TCM_BASIC SET 
-            CODE_NM = ?, CODE_PROP1 = ?, CODE_PROP2 = ?, CODE_PROP3 = ?, 
-            DESCRIPTION_TX = ?, DEFAULT_YN = ?, USE_YN = ?, SYSTEM_YN = ?, 
-            RELATION_CD = ?, SORT_SEQ = ?, REMARK = ?, MODIFYUSER = 'ADMIN'
+        UPDATE TCM_BASIC SET CODE_NM = ?, CODE_PROP1 = ?, CODE_PROP2 = ?, CODE_PROP3 = ?, DESCRIPTION_TX = ?, DEFAULT_YN = ?, USE_YN = ?, SYSTEM_YN = ?, RELATION_CD = ?, SORT_SEQ = ?, REMARK = ?, MODIFYUSER = 'ADMIN', MODIFYDT = NOW()
         WHERE CORP_CD = '25001' AND GROUP_CD = ? AND CODE_CD = ?
     `;
-    const params = [
-        code.CODE_NM, code.CODE_PROP1, code.CODE_PROP2, code.CODE_PROP3,
-        code.DESCRIPTION_TX, code.DEFAULT_YN, code.USE_YN, code.SYSTEM_YN,
-        code.RELATION_CD, code.SORT_SEQ, code.REMARK, code.GROUP_CD, code.CODE_CD
-    ];
-
-    db.query(query, params, (err, results) => {
+    db.query(query, [code.CODE_NM, code.CODE_PROP1, code.CODE_PROP2, code.CODE_PROP3, code.DESCRIPTION_TX, code.DEFAULT_YN, code.USE_YN, code.SYSTEM_YN, code.RELATION_CD, code.SORT_SEQ, code.REMARK, code.GROUP_CD, code.CODE_CD], (err) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
         res.json({ success: true, message: '수정되었습니다.' });
     });
 });
 
-// Delete basic code
 app.delete('/api/basic-codes', (req, res) => {
     const { GROUP_CD, CODE_CD } = req.body;
-    if (!GROUP_CD || !CODE_CD) return res.status(400).json({ success: false, message: 'GROUP_CD and CODE_CD required' });
-
-    const query = "DELETE FROM TCM_BASIC WHERE CORP_CD = '25001' AND GROUP_CD = ? AND CODE_CD = ?";
-    db.query(query, [GROUP_CD, CODE_CD], (err, results) => {
+    db.query("DELETE FROM TCM_BASIC WHERE CORP_CD = '25001' AND GROUP_CD = ? AND CODE_CD = ?", [GROUP_CD, CODE_CD], (err) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
         res.json({ success: true, message: '삭제되었습니다.' });
     });
 });
 
-// Reorder basic codes
 app.put('/api/basic-codes/reorder', (req, res) => {
     const { GROUP_CD, orders } = req.body;
-    if (!GROUP_CD || !Array.isArray(orders)) return res.status(400).json({ success: false, message: 'Invalid data' });
-
     let completed = 0;
-    let errors = [];
-
-    if (orders.length === 0) return res.json({ success: true });
-
     orders.forEach(order => {
-        const query = "UPDATE TCM_BASIC SET SORT_SEQ = ? WHERE CORP_CD = '25001' AND GROUP_CD = ? AND CODE_CD = ?";
-        db.query(query, [order.SORT_SEQ, GROUP_CD, order.CODE_CD], (err) => {
-            if (err) errors.push(err.message);
-            completed++;
-            if (completed === orders.length) {
-                if (errors.length > 0) res.status(500).json({ success: false, errors });
-                else res.json({ success: true });
-            }
+        db.query("UPDATE TCM_BASIC SET SORT_SEQ = ? WHERE CORP_CD = '25001' AND GROUP_CD = ? AND CODE_CD = ?", [order.SORT_SEQ, GROUP_CD, order.CODE_CD], () => {
+            if (++completed === orders.length) res.json({ success: true });
         });
     });
 });
 
 // ========== Vendor Management APIs ==========
-
 app.get('/api/vendors', (req, res) => {
-    const { vendorNm, bizNo, useYn, vendorSec, vendorType } = req.query;
+    const { vendorNm, bizNo, useYn, vendorSec, vendorType, adSec } = req.query;
     let query = "SELECT * FROM TCM_VENDOR WHERE CORP_CD = '25001'";
     const params = [];
-
-    if (vendorNm) { query += " AND VENDOR_NM LIKE ?"; params.push(`%${vendorNm}%`); }
-    if (bizNo) { query += " AND BIZ_NO LIKE ?"; params.push(`%${bizNo}%`); }
-    if (useYn && useYn !== 'ALL') { query += " AND STOP_YN = ?"; params.push(useYn === 'Y' ? 'Y' : 'N'); }
+    if (vendorNm) { query += " AND (VENDOR_NM LIKE ? OR VENDOR_CD LIKE ?)"; params.push(`%${vendorNm}%`, `%${vendorNm}%`); }
+    if (bizNo) { query += " AND BUSINESS_NO LIKE ?"; params.push(`%${bizNo}%`); }
+    if (useYn && useYn !== 'ALL') { query += " AND CLOSE_YN = ?"; params.push(useYn); }
     if (vendorSec) { query += " AND VENDOR_SEC = ?"; params.push(vendorSec); }
-    if (vendorType) { query += " AND VENDOR_TYPE = ?"; params.push(vendorType); }
-
+    if (vendorType) { query += " AND VENDOR_TYP = ?"; params.push(vendorType); }
+    if (adSec) { query += " AND DEAL_SEC = ?"; params.push(adSec); }
+    query += " ORDER BY VENDOR_SEC ASC, VENDOR_CD ASC";
     db.query(query, params, (err, results) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
         res.json({ success: true, vendors: results });
@@ -622,64 +579,88 @@ app.get('/api/vendors', (req, res) => {
 
 app.post('/api/vendors/save', (req, res) => {
     const v = req.body;
-    if (!v.VENDOR_CD || !v.VENDOR_NM) return res.status(400).json({ success: false, message: 'Code and Name required' });
-
-    const checkQuery = "SELECT * FROM TCM_VENDOR WHERE CORP_CD = '25001' AND VENDOR_CD = ?";
-    db.query(checkQuery, [v.VENDOR_CD], (err, results) => {
+    db.query("SELECT * FROM TCM_VENDOR WHERE CORP_CD = '25001' AND VENDOR_CD = ?", [v.VENDOR_CD], (err, results) => {
         if (results && results.length > 0) {
-            const updateQuery = `
-                UPDATE TCM_VENDOR SET 
-                    VENDOR_NM=?, VENDOR_SNAME=?, VENDOR_SEC=?, VENDOR_TYPE=?, BIZ_NO=?, CORP_NO=?, BIZ_SEC=?, BIZ_TYPE=?, 
-                    CEO_NM=?, TEL_NO=?, HP_NO=?, FAX_NO=?, CEO_EMAIL=?, BILL_EMAIL=?, START_DT=?, END_DT=?, 
-                    PAY_METHOD=?, BANK_NM=?, ACCOUNT_NO=?, ACCOUNT_NM=?, PAY_DAY=?, BILL_TAX=?, STOP_YN=?, STORE_STATUS=?, 
-                    ADDR=?, MAIN_VENDOR=?, IS_STORE=?, IS_ADVERTISER=?, IS_PARTNER=?, OPEN_TIME=?, CLOSE_TIME=?, 
-                    BT_MODULE_YN=?, REGION_SEC=?, ROUND_TYPE=?, REPORT_EMAIL=?, DAILY_REPORT_YN=?, AD_SEC=?, 
-                    AD_START_DT=?, AD_AMOUNT=?, REP_NAME=?, REP_TEL=?, HQ_NAME=?, SALES_NAME=?, UNPAID_SMS_YN=?, 
-                    UNPAID_SMS_DAY=?, REMARK=?, MODIFYUSER='ADMIN'
-                WHERE CORP_CD='25001' AND VENDOR_CD=?
-            `;
-            const params = [
-                v.VENDOR_NM, v.VENDOR_SNAME, v.VENDOR_SEC, v.VENDOR_TYPE, v.BIZ_NO, v.CORP_NO, v.BIZ_SEC, v.BIZ_TYPE,
-                v.CEO_NM, v.TEL_NO, v.HP_NO, v.FAX_NO, v.CEO_EMAIL, v.BILL_EMAIL, v.START_DT, v.END_DT,
-                v.PAY_METHOD, v.BANK_NM, v.ACCOUNT_NO, v.ACCOUNT_NM, v.PAY_DAY, v.BILL_TAX, v.STOP_YN, v.STORE_STATUS,
-                v.ADDR, v.MAIN_VENDOR, v.IS_STORE, v.IS_ADVERTISER, v.IS_PARTNER, v.OPEN_TIME, v.CLOSE_TIME,
-                v.BT_MODULE_YN, v.REGION_SEC, v.ROUND_TYPE, v.REPORT_EMAIL, v.DAILY_REPORT_YN, v.AD_SEC,
-                v.AD_START_DT, v.AD_AMOUNT, v.REP_NAME, v.REP_TEL, v.HQ_NAME, v.SALES_NAME, v.UNPAID_SMS_YN,
-                v.UNPAID_SMS_DAY, v.REMARK, v.VENDOR_CD
-            ];
-            db.query(updateQuery, params, (e) => {
-                if (e) return res.status(500).json({ success: false, error: e.message });
-                res.json({ success: true, message: '저장되었습니다.' });
-            });
+            const sql = `UPDATE TCM_VENDOR SET VENDOR_NM=?, VENDOR_SHTNM=?, VENDOR_SEC=?, VENDOR_TYP=?, BUSINESS_NO=?, CORPORATE_NO=?, BUSINESS_SEC=?, BUSINESS_KND=?, PRESIDENT_NM=?, TEL_NO=?, HP_NO=?, FAX_NO=?, EMAIL=?, TAX_EMAIL=?, OPEN_DT=?, END_DT=?, PAYMENT_TYP=?, PAYMENT_BANK=?, ACCOUNT_NO=?, PAYMENT_NM=?, PAYMENT_DT=?, BILL_TYP=?, CLOSE_YN=?, DEAL_TYP=?, ADDRESS_HDR=?, ADDRESS_DET=?, VENDOR_REP=?, SALES_VENDOR=?, INPUT_VENDOR=?, OUTPUT_VENDOR=?, OPEN_TIME=?, CLOSE_TIME=?, BLE_USEYN=?, ADDR_AREA1=?, ADDR_AREA2=?, ADDR_AREA3=?, DECIMAL_SEC=?, MAINTENANCE_EMAIL=?, DAILYREPORT_YN=?, DEAL_SEC=?, PROPERTY_01=?, MAINTENANCE_AMT=?, RESPONSE_NM=?, RESPONSE_TEL=?, HEADUSER_ID=?, SALEUSER_ID=?, SMS_ALERTYN=?, SMS_ALERTDAY=?, REMARK=?, MODIFYUSER='ADMIN', MODIFYDT=NOW() WHERE CORP_CD='25001' AND VENDOR_CD=?`;
+            const params = [v.VENDOR_NM, v.VENDOR_SHTNM, v.VENDOR_SEC, v.VENDOR_TYP, v.BUSINESS_NO, v.CORPORATE_NO, v.BUSINESS_SEC, v.BUSINESS_KND, v.PRESIDENT_NM, v.TEL_NO, v.HP_NO, v.FAX_NO, v.EMAIL, v.TAX_EMAIL, v.OPEN_DT, v.END_DT, v.PAYMENT_TYP, v.PAYMENT_BANK, v.ACCOUNT_NO, v.PAYMENT_NM, v.PAYMENT_DT, v.BILL_TYP, v.CLOSE_YN, v.DEAL_TYP, v.ADDRESS_HDR, v.ADDRESS_DET, v.VENDOR_REP, v.SALES_VENDOR, v.INPUT_VENDOR, v.OUTPUT_VENDOR, v.OPEN_TIME, v.CLOSE_TIME, v.BLE_USEYN, v.ADDR_AREA1, v.ADDR_AREA2, v.ADDR_AREA3, v.DECIMAL_SEC, v.MAINTENANCE_EMAIL, v.DAILYREPORT_YN, v.DEAL_SEC, v.PROPERTY_01, v.MAINTENANCE_AMT, v.RESPONSE_NM, v.RESPONSE_TEL, v.HEADUSER_ID, v.SALEUSER_ID, v.SMS_ALERTYN, v.SMS_ALERTDAY, v.REMARK, v.VENDOR_CD];
+            db.query(sql, params, () => res.json({ success: true }));
         } else {
-            const insertQuery = `
-                INSERT INTO TCM_VENDOR (
-                    CORP_CD, VENDOR_CD, VENDOR_NM, VENDOR_SNAME, VENDOR_SEC, VENDOR_TYPE, BIZ_NO, CORP_NO, BIZ_SEC, BIZ_TYPE, 
-                    CEO_NM, TEL_NO, HP_NO, FAX_NO, CEO_EMAIL, BILL_EMAIL, START_DT, END_DT, 
-                    PAY_METHOD, BANK_NM, ACCOUNT_NO, ACCOUNT_NM, PAY_DAY, BILL_TAX, STOP_YN, STORE_STATUS, 
-                    ADDR, MAIN_VENDOR, IS_STORE, IS_ADVERTISER, IS_PARTNER, OPEN_TIME, CLOSE_TIME, 
-                    BT_MODULE_YN, REGION_SEC, ROUND_TYPE, REPORT_EMAIL, DAILY_REPORT_YN, AD_SEC, 
-                    AD_START_DT, AD_AMOUNT, REP_NAME, REP_TEL, HQ_NAME, SALES_NAME, UNPAID_SMS_YN, 
-                    UNPAID_SMS_DAY, REMARK, REGISTUSER
-                ) VALUES ('25001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ADMIN')
-            `;
-            const params = [
-                v.VENDOR_CD, v.VENDOR_NM, v.VENDOR_SNAME, v.VENDOR_SEC, v.VENDOR_TYPE, v.BIZ_NO, v.CORP_NO, v.BIZ_SEC, v.BIZ_TYPE,
-                v.CEO_NM, v.TEL_NO, v.HP_NO, v.FAX_NO, v.CEO_EMAIL, v.BILL_EMAIL, v.START_DT, v.END_DT,
-                v.PAY_METHOD, v.BANK_NM, v.ACCOUNT_NO, v.ACCOUNT_NM, v.PAY_DAY, v.BILL_TAX, v.STOP_YN, v.STORE_STATUS,
-                v.ADDR, v.MAIN_VENDOR, v.IS_STORE, v.IS_ADVERTISER, v.IS_PARTNER, v.OPEN_TIME, v.CLOSE_TIME,
-                v.BT_MODULE_YN, v.REGION_SEC, v.ROUND_TYPE, v.REPORT_EMAIL, v.DAILY_REPORT_YN, v.AD_SEC,
-                v.AD_START_DT, v.AD_AMOUNT, v.REP_NAME, v.REP_TEL, v.HQ_NAME, v.SALES_NAME, v.UNPAID_SMS_YN,
-                v.UNPAID_SMS_DAY, v.REMARK
-            ];
-            db.query(insertQuery, params, (e) => {
-                if (e) return res.status(500).json({ success: false, error: e.message });
-                res.json({ success: true, message: '등록되었습니다.' });
-            });
+            const sql = `INSERT INTO TCM_VENDOR (CORP_CD, VENDOR_CD, VENDOR_NM, VENDOR_SHTNM, VENDOR_SEC, VENDOR_TYP, BUSINESS_NO, CORPORATE_NO, BUSINESS_SEC, BUSINESS_KND, PRESIDENT_NM, TEL_NO, HP_NO, FAX_NO, EMAIL, TAX_EMAIL, OPEN_DT, END_DT, PAYMENT_TYP, PAYMENT_BANK, ACCOUNT_NO, PAYMENT_NM, PAYMENT_DT, BILL_TYP, CLOSE_YN, DEAL_TYP, ADDRESS_HDR, ADDRESS_DET, VENDOR_REP, SALES_VENDOR, INPUT_VENDOR, OUTPUT_VENDOR, OPEN_TIME, CLOSE_TIME, BLE_USEYN, ADDR_AREA1, ADDR_AREA2, ADDR_AREA3, DECIMAL_SEC, MAINTENANCE_EMAIL, DAILYREPORT_YN, DEAL_SEC, PROPERTY_01, MAINTENANCE_AMT, RESPONSE_NM, RESPONSE_TEL, HEADUSER_ID, SALEUSER_ID, SMS_ALERTYN, SMS_ALERTDAY, REMARK, REGISTUSER, REGISTDT) VALUES ('25001', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ADMIN', NOW())`;
+            const params = [v.VENDOR_CD, v.VENDOR_NM, v.VENDOR_SHTNM, v.VENDOR_SEC, v.VENDOR_TYP, v.BUSINESS_NO, v.CORPORATE_NO, v.BUSINESS_SEC, v.BUSINESS_KND, v.PRESIDENT_NM, v.TEL_NO, v.HP_NO, v.FAX_NO, v.EMAIL, v.TAX_EMAIL, v.OPEN_DT, v.END_DT, v.PAYMENT_TYP, v.PAYMENT_BANK, v.ACCOUNT_NO, v.PAYMENT_NM, v.PAYMENT_DT, v.BILL_TYP, v.CLOSE_YN, v.DEAL_TYP, v.ADDRESS_HDR, v.ADDRESS_DET, v.VENDOR_REP, v.SALES_VENDOR, v.INPUT_VENDOR, v.OUTPUT_VENDOR, v.OPEN_TIME, v.CLOSE_TIME, v.BLE_USEYN, v.ADDR_AREA1, v.ADDR_AREA2, v.ADDR_AREA3, v.DECIMAL_SEC, v.MAINTENANCE_EMAIL, v.DAILYREPORT_YN, v.DEAL_SEC, v.PROPERTY_01, v.MAINTENANCE_AMT, v.RESPONSE_NM, v.RESPONSE_TEL, v.HEADUSER_ID, v.SALEUSER_ID, v.SMS_ALERTYN, v.SMS_ALERTDAY, v.REMARK];
+            db.query(sql, params, () => res.json({ success: true }));
         }
     });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+// ========== User Permission Management APIs ==========
+
+// 프로그램 권한 설정 조회
+app.get('/api/user-permissions/:userId', (req, res) => {
+    const { userId } = req.params;
+    console.log(`[DEBUG] Fetching permissions for userId: ${userId}`);
+    const sql = `
+        SELECT 
+            m.MENU_ID AS PGM_ID,
+            m.MENU_NM AS PROGRAM_NM,
+            m.WORK_SEC AS TASK_NM,
+            IFNULL(a.AUTH_MSKVAL, '0000000') AS AUTH_MSKVAL,
+            a.AUTH_APPDT AS START_DT,
+            a.AUTH_EPRDT AS END_DT
+        FROM TCM_MENUTREE m
+        LEFT JOIN TCM_ROLEPGMUSERAUTH a ON m.MENU_ID = a.PROGRAM_ID AND a.AUTH_USERID = ?
+        WHERE (m.CORP_CD = '*' OR m.CORP_CD = '25001')
+        ORDER BY m.DISPLAY_ORD, m.MENU_ID
+    `;
+    db.query(sql, [userId], (err, results) => {
+        if (err) {
+            console.error('[DEBUG] DB Error:', err.message);
+            return res.status(500).json({ success: false, error: err.message });
+        }
+        console.log(`[DEBUG] Found ${results.length} menu items for ${userId}`);
+        const formatted = results.map(r => {
+            const msk = r.AUTH_MSKVAL || '0000000';
+            return {
+                ...r,
+                AUTH_SEARCH: msk[0] === '1', AUTH_CONFIRM: msk[1] === '1', AUTH_SAVE: msk[2] === '1', 
+                AUTH_DELETE: msk[3] === '1', AUTH_PRINT: msk[4] === '1', AUTH_EXCEL: msk[5] === '1', 
+                AUTH_UPLOAD: msk[6] === '1'
+            };
+        });
+        res.json({ success: true, permissions: formatted });
+    });
 });
+
+app.get('/api/user-auth-copy-list', (req, res) => {
+    db.query("SELECT USER_ID, USER_NM, USER_TYP FROM TCM_USERHDR WHERE CORP_CD = '25001' ORDER BY USER_NM", (err, results) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true, users: results });
+    });
+});
+
+app.get('/api/user-pc-auth/:userId', (req, res) => {
+    const { userId } = req.params;
+    const sql = "SELECT USE_YN AS ALLOW_YN, HDD_SN AS DISK_INFO, MAC_ADDR, REMARK FROM TCM_USERAUTH WHERE CORP_CD = '25001' AND USER_ID = ?";
+    db.query(sql, [userId], (err, results) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true, pcAuth: results.map(r => ({ ...r, ALLOW_YN: r.ALLOW_YN === 'Y' })) });
+    });
+});
+
+app.post('/api/user-permissions/save', (req, res) => {
+    const { userId, permissions } = req.body;
+    db.query("DELETE FROM TCM_ROLEPGMUSERAUTH WHERE AUTH_USERID = ?", [userId], (err) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        if (permissions.length > 0) {
+            const values = permissions.map(p => {
+                const msk = [p.AUTH_SEARCH?'1':'0', p.AUTH_CONFIRM?'1':'0', p.AUTH_SAVE?'1':'0', p.AUTH_DELETE?'1':'0', p.AUTH_PRINT?'1':'0', p.AUTH_EXCEL?'1':'0', p.AUTH_UPLOAD?'1':'0'].join('');
+                return ['', userId, p.PGM_ID, msk, 'ADMIN', new Date()];
+            });
+            db.query("INSERT INTO TCM_ROLEPGMUSERAUTH (CORP_CD, AUTH_USERID, PROGRAM_ID, AUTH_MSKVAL, REGISTUSER, REGISTDT) VALUES ?", [values], (err) => {
+                if (err) return res.status(500).json({ success: false, error: err.message });
+                res.json({ success: true, message: '저장되었습니다.' });
+            });
+        } else res.json({ success: true });
+    });
+});
+
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));

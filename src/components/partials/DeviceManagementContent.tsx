@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Save, Trash2, RefreshCw, Plus, Search, FileSpreadsheet, Download } from 'lucide-react';
 import axios from 'axios';
-import * as XLSX from 'xlsx';
+import XLSX from 'xlsx-js-style';
 import './DeviceManagementContent.css';
 
 // TCM_VENDOR_DEVICE 테이블 기준 인터페이스
 interface Device {
-    DEVICE_KEY: string;     // PK (기존 레코드), 신규 시 서버 자동 채번
-    DEVICE_ID: string;      // 장비 ID
-    VENDOR_CD: string;      // 거래처 코드
-    VENDOR_NM?: string;     // 거래처명 (JOIN)
-    DEVICE_NM: string;      // 장비명
-    POSITION_NM: string;    // 설치위치
-    USE_YN: string;         // 사용여부 Y/N
+    DEVICE_ID: string;      // 장비 ID (PK)
+    INPUT_DT?: string;      // 입고일자
+    OUTPUT_DT?: string;     // 사용일자
+    DISPOSE_DT?: string;    // 폐기일자
+    USE_VENDOR?: string;    // 현재사용점포 (VENDOR_CD)
+    USE_VENDOR_NM?: string; // 현재사용점포명 (JOIN)
+    USE_YN: string;         // 사용가능여부 Y/N
     REMARK?: string;        // 비고
     REGISTDT?: string;      // 등록일시
-    isNew?: boolean;        // 신규 행 여부 (프론트 전용)
+    isNew?: boolean;        // 신규 행 여부
 }
 
 interface Props {
@@ -26,11 +26,12 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
     const [devices, setDevices] = useState<Device[]>([]);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const [vendors, setVendors] = useState<{ VENDOR_CD: string, VENDOR_NM: string }[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Filters
-    const [startDate, setStartDate] = useState(new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, ''));
-    const [endDate, setEndDate] = useState(new Date().toISOString().slice(0, 10).replace(/-/g, ''));
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [searchVendor, setSearchVendor] = useState('');
 
     const fetchDevices = useCallback(async (overrides?: { startDate?: string, endDate?: string, vendorNm?: string }) => {
@@ -58,27 +59,101 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
         }
     }, [startDate, endDate, searchVendor]);
 
-    useEffect(() => {
-        fetchDevices();
-    }, [fetchDevices]);
-
-    // Excel Download Template
-    const handleDownloadTemplate = async () => {
+    const fetchVendors = useCallback(async () => {
         try {
-            const res = await axios.get('/api/device-template', {
-                responseType: 'blob'
-            });
-            const url = window.URL.createObjectURL(new Blob([res.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'Device_Upload_Template.xlsx');
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            const res = await axios.get('/api/vendors');
+            if (res.data.success) {
+                setVendors(res.data.vendors);
+            }
         } catch (err) {
-            console.error('Download template error:', err);
-            alert('템플릿 다운로드에 실패했습니다.');
+            console.error('Fetch vendors error:', err);
         }
+    }, []);
+
+    useEffect(() => {
+        fetchVendors();
+        fetchDevices();
+    }, [fetchVendors, fetchDevices]);
+
+    // Excel Download (Styled like the image)
+    const handleDownloadTemplate = () => {
+        const headers = ['장비ID', '입고일자', '사용일자', '폐기일자', '현재사용점포', '사용가능여부', '비고'];
+
+        // 데이터 변환 (True/False 형식 포함)
+        const excelData = devices.map(d => [
+            d.DEVICE_ID || '',
+            d.INPUT_DT ? `${d.INPUT_DT.slice(0, 4)}-${d.INPUT_DT.slice(4, 6)}-${d.INPUT_DT.slice(6, 8)}` : '',
+            d.OUTPUT_DT ? `${d.OUTPUT_DT.slice(0, 4)}-${d.OUTPUT_DT.slice(4, 6)}-${d.OUTPUT_DT.slice(6, 8)}` : '',
+            d.DISPOSE_DT ? `${d.DISPOSE_DT.slice(0, 4)}-${d.DISPOSE_DT.slice(4, 6)}-${d.DISPOSE_DT.slice(6, 8)}` : '',
+            d.USE_VENDOR || '',
+            d.USE_YN === 'Y' ? 'True' : 'False',
+            d.REMARK || ''
+        ]);
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...excelData]);
+
+        // 스타일 정의
+        const headerStyle = {
+            fill: { fgColor: { rgb: "D9D9D9" } },
+            font: { bold: true, sz: 11 },
+            alignment: { horizontal: "center", vertical: "center" },
+            border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+            }
+        };
+
+        const cellStyle = {
+            alignment: { vertical: "center" },
+            border: {
+                top: { style: "thin" },
+                bottom: { style: "thin" },
+                left: { style: "thin" },
+                right: { style: "thin" }
+            }
+        };
+
+        const centerStyle = {
+            ...cellStyle,
+            alignment: { horizontal: "center", vertical: "center" }
+        };
+
+        // 스타일 적용
+        const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+        for (let R = range.s.r; R <= range.e.r; ++R) {
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const cell_ref = XLSX.utils.encode_cell({ r: R, c: C });
+                if (!ws[cell_ref]) ws[cell_ref] = { t: 's', v: '' };
+
+                if (R === 0) {
+                    ws[cell_ref].s = headerStyle;
+                } else {
+                    // 데이터 행 스타일
+                    if (C === 5 || C === 1 || C === 2 || C === 3) { // 사용가능여부, 날짜들
+                        ws[cell_ref].s = centerStyle;
+                    } else {
+                        ws[cell_ref].s = cellStyle;
+                    }
+                }
+            }
+        }
+
+        // 컬럼 너비 설정
+        ws['!cols'] = [
+            { wch: 20 }, // 장비ID
+            { wch: 15 }, // 입고일자
+            { wch: 15 }, // 사용일자
+            { wch: 15 }, // 폐기일자
+            { wch: 20 }, // 현재사용점포
+            { wch: 15 }, // 사용가능여부
+            { wch: 30 }  // 비고
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, 'Devices');
+        XLSX.writeFile(wb, 'Device_Management_List.xlsx');
     };
 
     const handleExcelUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,7 +174,7 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
                     return;
                 }
 
-                // 헤더: ['장비ID', '거래처코드', '장비명', '설치위치', '사용가능여부', '비고']
+                // 헤더: ['장비ID', '입고일자', '사용일자', '폐기일자', '현재사용점포', '사용가능여부', '비고']
                 const headers = data[0];
                 const rows = data.slice(1);
 
@@ -116,13 +191,18 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
                         return 'N';
                     };
 
-                    // TCM_VENDOR_DEVICE 컬럼 기준으로 매핑
+                    const formatDateExcel = (val: any) => {
+                        if (!val) return '';
+                        // 엑셀 날짜 형식(YYYY-MM-DD or YYYYMMDD)을 YYYYMMDD로 변환
+                        return String(val).replace(/-/g, '').substring(0, 8);
+                    };
+
                     return {
-                        DEVICE_KEY: '',   // 신규 → 서버 자동 채번
                         DEVICE_ID: String(rowData['장비ID'] || ''),
-                        VENDOR_CD: String(rowData['거래처코드'] || ''),
-                        DEVICE_NM: String(rowData['장비명'] || ''),
-                        POSITION_NM: String(rowData['설치위치'] || ''),
+                        INPUT_DT: formatDateExcel(rowData['입고일자']),
+                        OUTPUT_DT: formatDateExcel(rowData['사용일자']),
+                        DISPOSE_DT: formatDateExcel(rowData['폐기일자']),
+                        USE_VENDOR: String(rowData['현재사용점포'] || ''), // '거래처코드'는 이전 양식에 있었으므로 제거
                         USE_YN: formatUseYn(rowData['사용가능여부']),
                         REMARK: String(rowData['비고'] || ''),
                         isNew: true
@@ -130,8 +210,18 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
                 }).filter(d => d.DEVICE_ID);
 
                 if (newDevicesFromExcel.length > 0) {
-                    setDevices(prev => [...newDevicesFromExcel, ...prev]);
-                    alert(`${newDevicesFromExcel.length}건이 로드되었습니다. '저장' 버튼을 눌러 확정해주세요.`);
+                    // 업로드 시 즉시 DB 저장 및 동기화
+                    axios.post('/api/devices/save', newDevicesFromExcel)
+                        .then(res => {
+                            if (res.data.success) {
+                                alert(`${newDevicesFromExcel.length}건의 데이터가 성공적으로 업로드 및 동기화 되었습니다.`);
+                                fetchDevices();
+                            }
+                        })
+                        .catch(err => {
+                            console.error('Upload save error:', err);
+                            alert('업로드 데이터 저장 중 오류가 발생했습니다.');
+                        });
                 }
             } catch (err) {
                 console.error('Excel upload error:', err);
@@ -147,13 +237,12 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
     };
 
     const handleAddRow = () => {
-        // 신규 행 추가 - DEVICE_KEY는 저장 시 서버에서 자동 채번
         const newDevice: Device = {
-            DEVICE_KEY: '',
             DEVICE_ID: '',
-            VENDOR_CD: '',
-            DEVICE_NM: '',
-            POSITION_NM: '',
+            INPUT_DT: '',
+            OUTPUT_DT: '',
+            DISPOSE_DT: '',
+            USE_VENDOR: '',
             USE_YN: 'Y',
             REMARK: '',
             isNew: true
@@ -162,14 +251,11 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
     };
 
     const handleRefresh = useCallback(() => {
-        const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, '');
-        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-
-        setStartDate(oneYearAgo);
-        setEndDate(today);
+        setStartDate('');
+        setEndDate('');
         setSearchVendor('');
 
-        fetchDevices({ startDate: oneYearAgo, endDate: today, vendorNm: '' });
+        fetchDevices({ startDate: '', endDate: '', vendorNm: '' });
     }, [fetchDevices]);
 
     const handleSave = async () => {
@@ -229,6 +315,19 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
         return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
     };
 
+    const formatDateTime = (dateStr: string | null) => {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return dateStr;
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const y = date.getFullYear();
+        const m = pad(date.getMonth() + 1);
+        const d = pad(date.getDate());
+        const h = pad(date.getHours());
+        const mi = pad(date.getMinutes());
+        return `${y}-${m}-${d} ${h}:${mi}`;
+    };
+
     const handleCellChange = (index: number, field: keyof Device, value: any) => {
         const newDevices = [...devices];
         newDevices[index] = { ...newDevices[index], [field]: value };
@@ -236,12 +335,12 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
     };
 
     // DEVICE_KEY 기준으로 선택 관리 (신규 행은 DEVICE_KEY 없으므로 선택 불가)
-    const toggleRowSelection = (key: string) => {
-        if (!key) return;
-        if (selectedIds.includes(key)) {
-            setSelectedIds(selectedIds.filter(i => i !== key));
+    const toggleRowSelection = (id: string) => {
+        if (!id) return;
+        if (selectedIds.includes(id)) {
+            setSelectedIds(selectedIds.filter(i => i !== id));
         } else {
-            setSelectedIds([...selectedIds, key]);
+            setSelectedIds([...selectedIds, id]);
         }
     };
 
@@ -279,14 +378,14 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
                 </div>
                 <div className="mgmt-form-group horizontal dm-filter-vendor">
                     <span className="mgmt-label">사용거래처</span>
-                    <input type="text" className="mgmt-input" placeholder="거래처명 검색..." value={searchVendor} onChange={(e) => setSearchVendor(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchDevices()} />
+                    <input type="text" className="mgmt-input" placeholder="거래처명 검색..." style={{ maxWidth: '200px' }} value={searchVendor} onChange={(e) => setSearchVendor(e.target.value)} onKeyDown={e => e.key === 'Enter' && fetchDevices()} />
                 </div>
             </div>
 
             {/* Main Content */}
             <div className="mgmt-card dm-main-card">
                 <div className="dm-info-bar">
-                    <span className="dm-info-text">엑셀등으로 컬럼 위치를 맞추고 복사 한 뒤 Ctrl-Alt-V를 누르면 데이터 복사가 됩니다.</span>
+                    <span className="dm-info-text"></span>
                     <div className="dm-total-count">총 {devices.length} 건</div>
                 </div>
 
@@ -295,59 +394,67 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
                         <thead>
                             <tr>
                                 <th className="dm-table-col-check">
-                                    {/* 전체 선택: DEVICE_KEY 있는 기존 레코드만 해당 */}
                                     <input type="checkbox"
-                                        checked={selectedIds.length > 0 && selectedIds.length === devices.filter(d => d.DEVICE_KEY).length}
+                                        checked={selectedIds.length > 0 && selectedIds.length === devices.filter(d => d.DEVICE_ID).length}
                                         onChange={() => {
                                             if (selectedIds.length > 0) setSelectedIds([]);
-                                            else setSelectedIds(devices.filter(d => d.DEVICE_KEY).map(d => d.DEVICE_KEY));
+                                            else setSelectedIds(devices.filter(d => d.DEVICE_ID).map(d => d.DEVICE_ID));
                                         }} />
                                 </th>
                                 <th className="dm-table-col-id">장비 ID</th>
-                                <th className="dm-table-col-vendor">거래처명</th>
-                                <th>장비명</th>
-                                <th>설치위치</th>
-                                <th className="dm-table-col-status">사용여부</th>
-                                <th>비고</th>
+                                <th className="dm-table-col-date">입고일자</th>
+                                <th className="dm-table-col-date">사용일자</th>
+                                <th className="dm-table-col-date">폐기일자</th>
+                                <th className="dm-table-col-vendor">현재사용점포</th>
+                                <th className="dm-table-col-status">사용가능여부</th>
+                                <th className="dm-table-col-remark">비고</th>
+                                <th className="dm-table-col-regdt">작성일자</th>
                             </tr>
                         </thead>
                         <tbody>
                             {devices.map((d, index) => (
-                                <tr key={d.DEVICE_KEY || `new-${index}`}
-                                    className={selectedIds.includes(d.DEVICE_KEY) ? 'selected' : ''}
-                                    onClick={() => toggleRowSelection(d.DEVICE_KEY)}>
-                                    <td className="dm-table-cell-center" onClick={e => e.stopPropagation()}>
+                                <tr key={d.DEVICE_ID || `new-${index}`}
+                                    className={selectedIds.includes(d.DEVICE_ID) ? 'selected' : ''}>
+                                    <td className="dm-table-cell-center">
                                         <input type="checkbox"
-                                            checked={selectedIds.includes(d.DEVICE_KEY)}
-                                            onChange={() => toggleRowSelection(d.DEVICE_KEY)}
-                                            disabled={!d.DEVICE_KEY} />
+                                            checked={selectedIds.includes(d.DEVICE_ID)}
+                                            onChange={() => toggleRowSelection(d.DEVICE_ID)}
+                                            disabled={!d.DEVICE_ID} />
                                     </td>
                                     <td>
                                         <input className="mgmt-input dm-table-input"
                                             value={d.DEVICE_ID}
                                             onChange={(e) => handleCellChange(index, 'DEVICE_ID', e.target.value)}
-                                            placeholder="장비 ID 입력" />
+                                            placeholder="장비 ID" />
                                     </td>
                                     <td>
-                                        {/* 거래처명 표시 (JOIN), 수정 시 VENDOR_CD로 저장 */}
-                                        <input className="mgmt-input dm-table-input"
-                                            value={d.VENDOR_NM || d.VENDOR_CD || ''}
-                                            onChange={(e) => handleCellChange(index, 'VENDOR_CD', e.target.value)}
-                                            placeholder="거래처코드 입력" />
+                                        <input type="date" className="mgmt-input dm-table-input"
+                                            value={formatDate(d.INPUT_DT || '')}
+                                            onChange={(e) => handleCellChange(index, 'INPUT_DT', e.target.value.replace(/-/g, ''))} />
                                     </td>
                                     <td>
-                                        <input className="mgmt-input dm-table-input"
-                                            value={d.DEVICE_NM}
-                                            onChange={(e) => handleCellChange(index, 'DEVICE_NM', e.target.value)}
-                                            placeholder="장비명" />
+                                        <input type="date" className="mgmt-input dm-table-input"
+                                            value={formatDate(d.OUTPUT_DT || '')}
+                                            onChange={(e) => handleCellChange(index, 'OUTPUT_DT', e.target.value.replace(/-/g, ''))} />
                                     </td>
                                     <td>
-                                        <input className="mgmt-input dm-table-input"
-                                            value={d.POSITION_NM}
-                                            onChange={(e) => handleCellChange(index, 'POSITION_NM', e.target.value)}
-                                            placeholder="설치위치" />
+                                        <input type="date" className="mgmt-input dm-table-input"
+                                            value={formatDate(d.DISPOSE_DT || '')}
+                                            onChange={(e) => handleCellChange(index, 'DISPOSE_DT', e.target.value.replace(/-/g, ''))} />
                                     </td>
-                                    <td className="dm-table-cell-center" onClick={e => e.stopPropagation()}>
+                                    <td>
+                                        <select className="mgmt-input dm-table-select"
+                                            value={d.USE_VENDOR || ''}
+                                            onChange={(e) => handleCellChange(index, 'USE_VENDOR', e.target.value)}>
+                                            <option value="">선택안함</option>
+                                            {vendors.map(v => (
+                                                <option key={v.VENDOR_CD} value={v.VENDOR_CD}>
+                                                    {v.VENDOR_NM}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </td>
+                                    <td className="dm-table-cell-center">
                                         <input type="checkbox"
                                             checked={d.USE_YN === 'Y'}
                                             onChange={(e) => handleCellChange(index, 'USE_YN', e.target.checked ? 'Y' : 'N')} />
@@ -357,10 +464,13 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
                                             value={d.REMARK || ''}
                                             onChange={(e) => handleCellChange(index, 'REMARK', e.target.value)} />
                                     </td>
+                                    <td className="dm-table-cell-center dm-col-date">
+                                        {formatDateTime(d.REGISTDT || '')}
+                                    </td>
                                 </tr>
                             ))}
                             {devices.length === 0 && !loading && (
-                                <tr><td colSpan={8} className="dm-table-empty">조회된 데이터가 없습니다.</td></tr>
+                                <tr><td colSpan={11} className="dm-table-empty">조회된 데이터가 없습니다.</td></tr>
                             )}
                         </tbody>
                     </table>

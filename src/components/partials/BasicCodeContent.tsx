@@ -37,7 +37,7 @@ const BasicCodeContent: React.FC<Props> = ({ theme }) => {
     const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
     const [groupSearch, setGroupSearch] = useState('');
     const [codeSearch, setCodeSearch] = useState('');
-    const [systemFilter, setSystemFilter] = useState('N');
+    const [systemFilter, setSystemFilter] = useState('');
     const [loading, setLoading] = useState(false);
     const [editingCells, setEditingCells] = useState<Record<string, BasicCode>>({});
     const [newRows, setNewRows] = useState<Partial<BasicCode>[]>([]);
@@ -86,7 +86,7 @@ const BasicCodeContent: React.FC<Props> = ({ theme }) => {
     const handleRefresh = useCallback(() => {
         setGroupSearch('');
         setCodeSearch('');
-        setSystemFilter('N');
+        setSystemFilter('');
         // Don't null selectedGroup to keep context, but reload everything
         fetchGroups();
         if (selectedGroup) fetchCodes(selectedGroup);
@@ -276,6 +276,7 @@ const BasicCodeContent: React.FC<Props> = ({ theme }) => {
                 {/* Left - Group List */}
                 <div className="mgmt-card bc-sidebar-card">
                     <div className="mgmt-table-wrapper bc-sidebar-table-wrapper">
+                        <div className="vm-subgrid-header">기초코드 목록</div>
                         <table className="mgmt-table">
                             <thead>
                                 <tr>
@@ -339,9 +340,6 @@ const BasicCodeContent: React.FC<Props> = ({ theme }) => {
                                         <th className="bc-col-no">NO</th>
                                         <th className="bc-col-code">공통코드</th>
                                         <th className="bc-col-name">코드명</th>
-                                        <th className="bc-col-prop">속성1</th>
-                                        <th className="bc-col-prop">속성2</th>
-                                        <th className="bc-col-prop">속성3</th>
                                         <th className="bc-col-desc">코드설명</th>
                                         <th className="bc-col-yn">기본</th>
                                         <th className="bc-col-status">사용상태</th>
@@ -365,32 +363,22 @@ const BasicCodeContent: React.FC<Props> = ({ theme }) => {
                                                 onDragOver={(e) => e.preventDefault()}
                                                 className={`${isSelected ? 'selected' : ''} ${isEditing ? 'editing' : ''} ${isDragging ? 'dragging' : ''}`}
                                             >
-                                                <td className="bc-cell-center" onMouseDown={e => e.stopPropagation()}>
+                                                <td className="bc-col-check bc-cell-center" onMouseDown={e => e.stopPropagation()}>
                                                     <input type="checkbox" checked={isSelected} onChange={() => toggleRowSelection(key)} />
                                                 </td>
-                                                <td className="bc-cell-no">{idx + 1}</td>
-                                                <td className="bc-cell-code">{code.CODE_CD}</td>
-                                                <td>
+                                                <td className="bc-col-no bc-cell-no">{idx + 1}</td>
+                                                <td className="bc-col-code bc-cell-code">{code.CODE_CD}</td>
+                                                <td className="bc-col-name">
                                                     <input className="mgmt-input bc-table-input" value={getEditValue(code, 'CODE_NM') || ''}
+                                                        title={getEditValue(code, 'CODE_NM') || ''}
                                                         onChange={(e) => updateEditingCell(code, 'CODE_NM', e.target.value)} />
                                                 </td>
-                                                <td>
-                                                    <input className="mgmt-input bc-table-input" value={getEditValue(code, 'CODE_PROP1') || ''}
-                                                        onChange={(e) => updateEditingCell(code, 'CODE_PROP1', e.target.value)} />
-                                                </td>
-                                                <td>
-                                                    <input className="mgmt-input bc-table-input" value={getEditValue(code, 'CODE_PROP2') || ''}
-                                                        onChange={(e) => updateEditingCell(code, 'CODE_PROP2', e.target.value)} />
-                                                </td>
-                                                <td>
-                                                    <input className="mgmt-input bc-table-input" value={getEditValue(code, 'CODE_PROP3') || ''}
-                                                        onChange={(e) => updateEditingCell(code, 'CODE_PROP3', e.target.value)} />
-                                                </td>
-                                                <td>
+                                                <td className="bc-col-desc">
                                                     <input className="mgmt-input bc-table-input" value={getEditValue(code, 'DESCRIPTION_TX') || ''}
+                                                        title={getEditValue(code, 'DESCRIPTION_TX') || ''}
                                                         onChange={(e) => updateEditingCell(code, 'DESCRIPTION_TX', e.target.value)} />
                                                 </td>
-                                                <td className="bc-cell-center">
+                                                <td className="bc-col-yn bc-cell-center">
                                                     <select className="mgmt-select bc-table-select"
                                                         value={getEditValue(code, 'DEFAULT_YN') || 'N'}
                                                         onChange={(e) => updateEditingCell(code, 'DEFAULT_YN', e.target.value)}>
@@ -398,11 +386,11 @@ const BasicCodeContent: React.FC<Props> = ({ theme }) => {
                                                         <option value="N">N</option>
                                                     </select>
                                                 </td>
-                                                <td className="bc-cell-center">
+                                                <td className="bc-col-status bc-cell-center">
                                                     <YNBadge value={getEditValue(code, 'USE_YN')}
                                                         onChange={(v) => updateEditingCell(code, 'USE_YN', v)} />
                                                 </td>
-                                                <td className="bc-cell-center">
+                                                <td className="bc-col-system bc-cell-center">
                                                     <select className="mgmt-select bc-table-select"
                                                         value={getEditValue(code, 'SYSTEM_YN') || 'N'}
                                                         onChange={(e) => updateEditingCell(code, 'SYSTEM_YN', e.target.value)}>
@@ -410,11 +398,11 @@ const BasicCodeContent: React.FC<Props> = ({ theme }) => {
                                                         <option value="N">N</option>
                                                     </select>
                                                 </td>
-                                                <td>
+                                                <td className="bc-col-rel">
                                                     <input className="mgmt-input bc-table-input" value={getEditValue(code, 'RELATION_CD') || ''}
                                                         onChange={(e) => updateEditingCell(code, 'RELATION_CD', e.target.value)} />
                                                 </td>
-                                                <td className="bc-cell-sort">
+                                                <td className="bc-col-sort bc-cell-sort">
                                                     {code.SORT_SEQ}
                                                 </td>
                                             </tr>
@@ -423,44 +411,42 @@ const BasicCodeContent: React.FC<Props> = ({ theme }) => {
                                     {/* New Rows */}
                                     {newRows.map((row, idx) => (
                                         <tr key={`new-${idx}`} className="bc-new-row">
-                                            <td className="bc-cell-center">
+                                            <td className="bc-col-check bc-cell-center">
                                                 <button onClick={() => setNewRows(newRows.filter((_, i) => i !== idx))} className="bc-delete-btn">
                                                     <X size={16} />
                                                 </button>
                                             </td>
-                                            <td className="bc-new-badge">NEW</td>
-                                            <td>
+                                            <td className="bc-col-no bc-new-badge">NEW</td>
+                                            <td className="bc-col-code">
                                                 <input className="mgmt-input bc-table-input-code" placeholder="코드" value={row.CODE_CD || ''}
                                                     onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], CODE_CD: e.target.value }; setNewRows(r); }} />
                                             </td>
-                                            <td>
+                                            <td className="bc-col-name">
                                                 <input className="mgmt-input bc-table-input" placeholder="코드명" value={row.CODE_NM || ''}
+                                                    title={row.CODE_NM || ''}
                                                     onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], CODE_NM: e.target.value }; setNewRows(r); }} />
                                             </td>
-                                            <td><input className="mgmt-input bc-table-input" value={row.CODE_PROP1 || ''} onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], CODE_PROP1: e.target.value }; setNewRows(r); }} /></td>
-                                            <td><input className="mgmt-input bc-table-input" value={row.CODE_PROP2 || ''} onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], CODE_PROP2: e.target.value }; setNewRows(r); }} /></td>
-                                            <td><input className="mgmt-input bc-table-input" value={row.CODE_PROP3 || ''} onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], CODE_PROP3: e.target.value }; setNewRows(r); }} /></td>
-                                            <td><input className="mgmt-input bc-table-input" value={row.DESCRIPTION_TX || ''} onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], DESCRIPTION_TX: e.target.value }; setNewRows(r); }} /></td>
-                                            <td className="bc-cell-center">
+                                            <td className="bc-col-desc"><input className="mgmt-input bc-table-input" placeholder="코드설명" value={row.DESCRIPTION_TX || ''} title={row.DESCRIPTION_TX || ''} onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], DESCRIPTION_TX: e.target.value }; setNewRows(r); }} /></td>
+                                            <td className="bc-col-yn bc-cell-center">
                                                 <select className="mgmt-select bc-table-select" value={row.DEFAULT_YN || 'N'}
                                                     onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], DEFAULT_YN: e.target.value }; setNewRows(r); }}>
                                                     <option value="Y">Y</option><option value="N">N</option>
                                                 </select>
                                             </td>
-                                            <td className="bc-cell-center">
+                                            <td className="bc-col-status bc-cell-center">
                                                 <select className="mgmt-select bc-table-select" value={row.USE_YN || 'Y'}
                                                     onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], USE_YN: e.target.value }; setNewRows(r); }}>
                                                     <option value="Y">Y</option><option value="N">N</option>
                                                 </select>
                                             </td>
-                                            <td className="bc-cell-center">
+                                            <td className="bc-col-system bc-cell-center">
                                                 <select className="mgmt-select bc-table-select" value={row.SYSTEM_YN || 'N'}
                                                     onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], SYSTEM_YN: e.target.value }; setNewRows(r); }}>
                                                     <option value="Y">Y</option><option value="N">N</option>
                                                 </select>
                                             </td>
-                                            <td><input className="mgmt-input bc-table-input" value={row.RELATION_CD || ''} onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], RELATION_CD: e.target.value }; setNewRows(r); }} /></td>
-                                            <td className="bc-cell-sort">{row.SORT_SEQ}</td>
+                                            <td className="bc-col-rel"><input className="mgmt-input bc-table-input" value={row.RELATION_CD || ''} onChange={(e) => { const r = [...newRows]; r[idx] = { ...r[idx], RELATION_CD: e.target.value }; setNewRows(r); }} /></td>
+                                            <td className="bc-col-sort bc-cell-sort">{row.SORT_SEQ}</td>
                                         </tr>
                                     ))}
                                     {filteredCodes.length === 0 && newRows.length === 0 && (
