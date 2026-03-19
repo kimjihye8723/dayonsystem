@@ -67,37 +67,6 @@
 }
 
 /* Filter Bar Specifics */
-.perm-filter-bar {
-    margin-bottom: 0.75rem;
-    padding: 0.75rem 1.25rem;
-    display: flex;
-    gap: 2rem;
-    align-items: center;
-}
-
-.perm-filter-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.perm-filter-label {
-    margin-bottom: 0 !important;
-    width: auto !important;
-}
-
-.perm-filter-input-small {
-    width: 100px;
-}
-
-.perm-filter-select-medium {
-    width: 130px;
-}
-
-.perm-filter-search-input {
-    max-width: 250px;
-}
-
 .perm-copy-info {
     display: flex;
     align-items: center;
@@ -112,4 +81,11 @@
 .perm-copy-action-text {
     font-size: 11px;
     color: var(--text-muted);
+}
+
+.mgmt-table td input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--mgmt-primary);
 }

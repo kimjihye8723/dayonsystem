@@ -14,6 +14,17 @@ import DeviceManagementContent from './partials/DeviceManagementContent';
 import VendorManagementContent from './partials/VendorManagementContent';
 import UserManagementContent from './partials/UserManagementContent';
 import UserPermissionManagementContent from './partials/UserPermissionManagementContent';
+import UserStatusContent from './partials/UserStatusContent';
+import UserLoginInfoContent from './partials/UserLoginInfoContent';
+import ContentsFileManagementContent from './partials/ContentsFileManagementContent';
+import VendorStatusContent from './partials/VendorStatusContent';
+import AdContentRegistrationContent from './partials/AdContentRegistrationContent';
+import AdScheduleSettingContent from './partials/AdScheduleSettingContent';
+import TodayAppliedScheduleContent from './partials/TodayAppliedScheduleContent';
+import StoreStatusContent from './partials/StoreStatusContent';
+import AdPlayLogContent from './partials/AdPlayLogContent';
+import ContentAggContent from './partials/ContentAggContent';
+import BleLogAggContent from './partials/BleLogAggContent';
 
 interface Tab {
     id: string;
@@ -196,7 +207,7 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
 
 
 // Helper to get tab content component from ID
-const getTabContent = (id: string, theme: 'light' | 'dark'): React.ReactNode => {
+const getTabContent = (id: string, theme: 'light' | 'dark', closeTabById: (id: string) => void): React.ReactNode => {
     switch (id) {
         case 'today':
             return <TodayContent theme={theme} />;
@@ -216,6 +227,30 @@ const getTabContent = (id: string, theme: 'light' | 'dark'): React.ReactNode => 
             return <UserManagementContent theme={theme} />;
         case 'userperm':
             return <UserPermissionManagementContent theme={theme} />;
+        case 'userstatus':
+            return <UserStatusContent theme={theme} />;
+        case 'logininfo':
+            return <UserLoginInfoContent theme={theme} />;
+        case 'contentsfile':
+            return <ContentsFileManagementContent theme={theme} />;
+        case 'adcontents':
+            return <AdContentRegistrationContent theme={theme} />;
+        case 'vendorstatus':
+            return <VendorStatusContent theme={theme} />;
+        case 'adschedule':
+            return <AdScheduleSettingContent theme={theme} />;
+        case 'todayapplied':
+            return <TodayAppliedScheduleContent theme={theme} onClose={() => closeTabById(id)} />;
+        case 'storestatus':
+            return <StoreStatusContent theme={theme} onClose={() => closeTabById(id)} />;
+        case 'adplaylog':
+            return <AdPlayLogContent theme={theme} onClose={() => closeTabById(id)} />;
+        case 'agg':
+            return <ContentAggContent theme={theme} onClose={() => closeTabById(id)} />;
+        case 'ble-log':
+            return <BleLogAggContent theme={theme} onClose={() => closeTabById(id)} />;
+        case 'monthlyplan':
+            return <div style={{ padding: '2rem', color: 'var(--text-muted)' }}>월간 계획표 작성 준비 중...</div>;
         default:
             return null;
     }
@@ -334,6 +369,18 @@ const Dashboard: React.FC = () => {
         const newTabs = tabs.filter(tab => tab.id !== id);
         setTabs(newTabs);
 
+        if (activeTabId === id) {
+            setActiveTabId(newTabs[newTabs.length - 1].id);
+        }
+    };
+
+    const closeTabById = (id: string) => {
+        if (tabs.length === 1) {
+            alert('최소 한 개의 탭은 열려 있어야 합니다.');
+            return;
+        }
+        const newTabs = tabs.filter(tab => tab.id !== id);
+        setTabs(newTabs);
         if (activeTabId === id) {
             setActiveTabId(newTabs[newTabs.length - 1].id);
         }
@@ -475,7 +522,7 @@ const Dashboard: React.FC = () => {
                                     height: '100%'
                                 }}
                             >
-                                {getTabContent(tab.id, theme)}
+                                {getTabContent(tab.id, theme, closeTabById)}
                             </div>
                         ))}
                     </div>

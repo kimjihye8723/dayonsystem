@@ -1,4 +1,4 @@
-import { Clock, Users, User, LogOut, X, Activity, LayoutDashboard, Database, ClipboardList, FileSpreadsheet, Landmark, ShieldCheck } from 'lucide-react';
+import { Users, User, LogOut, X, Activity, Database, ClipboardList, FileSpreadsheet, Landmark, ShieldCheck, BarChart2, BarChart3, Monitor, FileVideo, Calendar, CalendarDays, History as HistoryIcon } from 'lucide-react';
 import logoDark from '../assets/joot_ams_w.png';
 import logoLight from '../assets/joot_ams_b.png';
 
@@ -45,125 +45,81 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </button>
             </div>
             <nav className="sidebar-nav">
+                <div className="nav-category">공통업무</div>
+                <div className="nav-group">
+                    <div style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--mgmt-primary)', borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}>기초코드/게시판</div>
+                    <NavItem id="basiccode" icon={<Database size={18} />} label="기초코드 관리" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="boardmgmt" icon={<ClipboardList size={18} />} label="게시판 관리" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="devicemgmt" icon={<FileSpreadsheet size={18} />} label="장비관리" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="monthlyplan" icon={<Calendar size={18} />} label="월간 계획표 작성" activeId={activeTabId} onClick={onTabSelect} />
+                </div>
+
+                <div className="nav-group" style={{ marginTop: '0.5rem' }}>
+                    <div style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--mgmt-primary)', borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}>사용자관리</div>
+                    <NavItem id="usermgmt" icon={<Users size={18} />} label="사용자 등록관리" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="userperm" icon={<ShieldCheck size={18} />} label="사용자 권한관리" activeId={activeTabId} onClick={onTabSelect} />
+                    <div className="nav-divider"></div>
+                    <NavItem id="userstatus" icon={<BarChart2 size={18} />} label="사용자 현황" activeId={activeId => activeId === 'userstatus'} onClick={onTabSelect} />
+                    <NavItem id="logininfo" icon={<Monitor size={18} />} label="사용자 로그인정보" activeId={activeTabId} onClick={onTabSelect} />
+                </div>
+
+                <div className="nav-category" style={{ marginTop: '1.5rem' }}>광고관리</div>
+                <div className="nav-group">
+                    <div style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--mgmt-primary)', borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}>기본정보</div>
+                    <NavItem id="vendormgmt" icon={<Landmark size={18} />} label="거래처관리" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="contentsfile" icon={<FileVideo size={18} />} label="컨텐츠 파일 관리" activeId={activeTabId} onClick={onTabSelect} />
+                    <div className="nav-divider"></div>
+                    <NavItem id="vendorstatus" icon={<Landmark size={18} />} label="거래처현황" activeId={activeTabId} onClick={onTabSelect} />
+                </div>
+
+                <div className="nav-group" style={{ marginTop: '0.5rem' }}>
+                    <div style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--mgmt-primary)', borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}>광고관리</div>
+                    <NavItem id="adcontents" icon={<FileVideo size={18} />} label="광고 컨텐츠 등록" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="adschedule" icon={<Calendar size={18} />} label="광고 스케줄 설정" activeId={activeTabId} onClick={onTabSelect} />
+                    <div className="nav-divider"></div>
+                    <NavItem id="todayapplied" icon={<CalendarDays size={18} />} label="당일 적용 스케줄" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="storestatus" icon={<Monitor size={18} />} label="점포 상태 확인" activeId={activeTabId} onClick={onTabSelect} />
+                </div>
+
+                <div className="nav-group" style={{ marginTop: '0.5rem' }}>
+                    <div style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--mgmt-primary)', borderBottom: '1px solid var(--glass-border)', background: 'var(--bg-card)' }}>광고집계</div>
+                    <NavItem id="adplaylog" icon={<HistoryIcon size={18} />} label="광고송출 로그조회" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="agg" icon={<BarChart3 size={18} />} label="컨텐츠별 집계조회" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="ble-log" icon={<Activity size={18} />} label="인원 계수측정 집계" activeId={activeTabId} onClick={onTabSelect} />
+                </div>
+
+                <NavItem id="profile" icon={<User size={18} />} label="회원정보" activeId={activeTabId} onClick={onTabSelect} />
+                
                 <a
                     href="#"
-                    className={`nav-item ${activeTabId === 'today' ? 'active' : ''}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onTabSelect('today', '투데이');
-                    }}
-                >
-                    <Clock size={20} /> 투데이
-                </a>
-                <a
-                    href="#"
-                    className={`nav-item ${activeTabId === 'realtime' ? 'active' : ''}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onTabSelect('realtime', '실시간 현황');
-                    }}
-                >
-                    <Activity size={20} /> 실시간 현황
-                </a>
-                <a
-                    href="http://www.godata.co.kr:90/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="nav-item"
-                >
-                    <LayoutDashboard size={20} /> 대시보드
-                </a>
-                <a
-                    href="http://smartgate1001.cns-link.net:7002"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="nav-item"
-                >
-                    <LayoutDashboard size={20} /> 피플카운팅
-                </a>
-                <a
-                    href="#"
-                    className={`nav-item ${activeTabId === 'basiccode' ? 'active' : ''}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onTabSelect('basiccode', '기초코드관리');
-                    }}
-                >
-                    <Database size={20} /> 기초코드관리
-                </a>
-                <a
-                    href="#"
-                    className={`nav-item ${activeTabId === 'boardmgmt' ? 'active' : ''}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onTabSelect('boardmgmt', '게시판관리');
-                    }}
-                >
-                    <ClipboardList size={20} /> 게시판관리
-                </a>
-                <a
-                    href="#"
-                    className={`nav-item ${activeTabId === 'devicemgmt' ? 'active' : ''}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onTabSelect('devicemgmt', '장비관리');
-                    }}
-                >
-                    <FileSpreadsheet size={20} /> 장비관리
-                </a>
-                <a
-                    href="#"
-                    className={`nav-item ${activeTabId === 'vendormgmt' ? 'active' : ''}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onTabSelect('vendormgmt', '거래처관리');
-                    }}
-                >
-                    <Landmark size={20} /> 거래처관리
-                </a>
-                <a
-                    href="#"
-                    className={`nav-item ${activeTabId === 'usermgmt' ? 'active' : ''}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onTabSelect('usermgmt', '사용자등록관리');
-                    }}
-                >
-                    <Users size={20} /> 사용자등록관리
-                </a>
-                <a
-                    href="#"
-                    className={`nav-item ${activeTabId === 'userperm' ? 'active' : ''}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onTabSelect('userperm', '사용자권한관리');
-                    }}
-                >
-                    <ShieldCheck size={20} /> 사용자권한관리
-                </a>
-                <a
-                    href="#"
-                    className={`nav-item ${activeTabId === 'profile' ? 'active' : ''}`}
-                    onClick={(e) => {
-                        e.preventDefault();
-                        onTabSelect('profile', '회원정보');
-                    }}
-                >
-                    <User size={20} /> 회원정보
-                </a>
-                <a
-                    href="#"
-                    className="nav-item"
-                    style={{ marginTop: '2rem', color: '#ef4444' }}
+                    className="nav-item logout-nav-item"
+                    style={{ marginTop: '1rem', color: '#ef4444' }}
                     onClick={(e) => {
                         e.preventDefault();
                         onLogout();
                     }}
                 >
-                    <LogOut size={20} /> 로그아웃
+                    <LogOut size={18} /> 로그아웃
                 </a>
             </nav>
         </aside>
+    );
+};
+
+const NavItem: React.FC<{ id: string; icon: React.ReactNode; label: string; activeId: string | ((id: string) => boolean); onClick: (id: string, label: string) => void }> = ({ id, icon, label, activeId, onClick }) => {
+    const isActive = typeof activeId === 'function' ? activeId(id) : activeId === id;
+    return (
+        <a
+            href="#"
+            className={`nav-item ${isActive ? 'active' : ''}`}
+            onClick={(e) => {
+                e.preventDefault();
+                onClick(id, label);
+            }}
+            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+        >
+            {icon} {label}
+        </a>
     );
 };
 

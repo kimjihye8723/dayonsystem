@@ -30,6 +30,13 @@ interface ProgramPermission {
     AUTH_PRINT: boolean;
     AUTH_EXCEL: boolean;
     AUTH_UPLOAD: boolean;
+    CAN_SEARCH?: boolean;
+    CAN_CONFIRM?: boolean;
+    CAN_SAVE?: boolean;
+    CAN_DELETE?: boolean;
+    CAN_PRINT?: boolean;
+    CAN_EXCEL?: boolean;
+    CAN_UPLOAD?: boolean;
 }
 
 interface PcPermission {
@@ -51,15 +58,17 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
 
     // Filters
     const [filterNm, setFilterNm] = useState('');
+    const [filterTyp, setFilterTyp] = useState('');
 
     // Details from TCM_ROLEPGMUSERAUTH & TCM_USERPCAUTH
     const [permissions, setPermissions] = useState<ProgramPermission[]>([]);
     const [pcPermissions, setPcPermissions] = useState<PcPermission[]>([]);
+    const [selectedTargetIds, setSelectedTargetIds] = useState<string[]>([]);
 
     const fetchUsers = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await axios.get('/api/users', { params: { userNm: filterNm } });
+            const response = await axios.get('/api/users', { params: { userNm: filterNm, userTyp: filterTyp } });
             if (response.data.success) {
                 setUserItems(response.data.users);
             }
@@ -68,7 +77,7 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
         } finally {
             setLoading(false);
         }
-    }, [filterNm]);
+    }, [filterNm, filterTyp]);
 
     const fetchCopyUsers = useCallback(async () => {
         try {
@@ -91,9 +100,13 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
         try {
             setLoading(true);
             // 1. Fetch permissions from TCM_ROLEPGMUSERAUTH
-            const permRes = await axios.get(`/api/user-permissions/${userId}`);
+            const storedUser = localStorage.getItem('user');
+            const adminUserId = storedUser ? JSON.parse(storedUser).USER_ID : '';
+
+            const permRes = await axios.get(`/api/user-permissions/${userId}`, {
+                params: { adminUserId }
+            });
             if (permRes.data.success) {
-                // DB의 PGM_ID를 UI의 ID 필드로 매핑하거나 그대로 사용
                 setPermissions(permRes.data.permissions);
             }
 
@@ -122,6 +135,8 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
             });
             if (response.data.success) {
                 alert('저장되었습니다.');
+                // Refresh data after save
+                await handleUserSelect(selectedUserId);
             }
         } catch (error) {
             console.error('Save error:', error);
@@ -135,6 +150,43 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
         const newPerms = [...permissions];
         (newPerms[idx] as any)[field] = !(newPerms[idx] as any)[field];
         setPermissions(newPerms);
+    };
+    const toggleTargetSelection = (userId: string) => {
+        setSelectedTargetIds(prev =>
+            prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+        );
+    };
+
+    const handleCopyPermissions = async () => {
+        if (!selectedUserId) {
+            alert('원본 사용자를 선택해주세요.');
+            return;
+        }
+        if (selectedTargetIds.length === 0) {
+            alert('권한을 복사할 대상 사용자를 선택해주세요.');
+            return;
+        }
+
+        if (!window.confirm(`${selectedTargetIds.length}명의 사용자에게 권한을 복사하시겠습니까?`)) {
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const response = await axios.post('/api/user-permissions/copy', {
+                sourceUserId: selectedUserId,
+                targetUserIds: selectedTargetIds
+            });
+            if (response.data.success) {
+                alert(response.data.message);
+                setSelectedTargetIds([]); // 초기화
+            }
+        } catch (error: any) {
+            console.error('Copy error:', error);
+            alert(error.response?.data?.message || '권한 복사 중 오류가 발생했습니다.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -168,17 +220,19 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
                 </div>
                 <div className="perm-filter-item">
                     <span className="mgmt-label perm-filter-label">사용자구분</span>
-                    <select className="mgmt-select perm-filter-select-medium">
-                        <option value="">전체</option>
-                        <option value="S">관리자</option>
-                        <option value="1">일반사용자</option>
+                    <select
+                        className="mgmt-select perm-filter-select-medium"
+                        value={filterTyp}
+                        onChange={e => setFilterTyp(e.target.value)}
+                    >
+                        <option value="">전체</option><option value="M">일반사용자</option><option value="A">사용자관리자</option><option value="S">시스템관리자</option>
                     </select>
                 </div>
                 <div className="perm-filter-item" style={{ flex: 1 }}>
                     <span className="mgmt-label perm-filter-label">사용자명/ID</span>
-                    <input 
-                        className="mgmt-input perm-filter-search-input" 
-                        placeholder="검색어..." 
+                    <input
+                        className="mgmt-input perm-filter-search-input"
+                        placeholder="검색어..."
                         value={filterNm}
                         onChange={e => setFilterNm(e.target.value)}
                         onKeyPress={e => e.key === 'Enter' && fetchUsers()}
@@ -188,7 +242,7 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
 
             {/* Matrix Layout */}
             <div className="perm-layout-container">
-                
+
                 {/* Top Row */}
                 <div className="perm-grid-row perm-top-row">
                     {/* Top Left: User Search (TCM_USERHDR) */}
@@ -208,8 +262,8 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
                                         userItems.map(item => (
                                             <tr key={item.USER_ID} className={`vm-row ${selectedUserId === item.USER_ID ? 'selected' : ''}`} onClick={() => handleUserSelect(item.USER_ID)}>
                                                 <td>{item.USER_NM}</td>
-                                                <td style={{ textAlign: 'center' }}>{item.USER_ID}</td>
-                                                <td style={{ textAlign: 'center' }}>{item.USER_TYP === 'S' ? '관리자' : '일반사용자'}</td>
+                                                <td>{item.USER_ID}</td>
+                                                <td>{item.USER_TYP === 'S' ? '관리자' : '일반사용자'}</td>
                                             </tr>
                                         ))
                                     ) : (
@@ -229,7 +283,7 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
                             </div>
                             <div className="perm-copy-info">
                                 <span className="perm-copy-action-text">의 권한을 선택 사용자(들)에게 복사</span>
-                                <button className="mgmt-toolbar-btn mgmt-btn-primary" style={{ padding: '2px 8px', fontSize: '11px' }}>복사</button>
+                                <button className="mgmt-toolbar-btn mgmt-btn-primary" style={{ padding: '2px 8px', fontSize: '11px' }} onClick={handleCopyPermissions}>복사</button>
                             </div>
                         </div>
                         <div className="mgmt-table-wrapper vm-table-wrapper-no-pad" style={{ flex: 1 }}>
@@ -244,19 +298,31 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {copyUserItems.length > 0 ? (
-                                        copyUserItems.map(item => (
-                                            <tr key={item.USER_ID} className="vm-row">
-                                                <td style={{ textAlign: 'center' }}>+</td>
-                                                <td style={{ textAlign: 'center' }}><input type="checkbox" /></td>
-                                                <td style={{ textAlign: 'center' }}>{item.USER_ID}</td>
-                                                <td>{item.USER_NM}</td>
-                                                <td style={{ textAlign: 'center' }}>{item.USER_TYP === 'S' ? '관리자' : '일반사용자'}</td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr><td colSpan={5} className="vm-cell-empty">복사 대상이 없습니다.</td></tr>
-                                    )}
+                                    {(() => {
+                                        const selectedUser = userItems.find(u => u.USER_ID === selectedUserId);
+                                        const isSelectedAdmin = selectedUser?.USER_TYP === 'S';
+
+                                        if (copyUserItems.length > 0 && !isSelectedAdmin) {
+                                            return copyUserItems
+                                                .filter(item => item.USER_ID !== selectedUserId)
+                                                .map(item => (
+                                                    <tr key={item.USER_ID} className="vm-row">
+                                                        <td>+</td>
+                                                        <td>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedTargetIds.includes(item.USER_ID)}
+                                                                onChange={() => toggleTargetSelection(item.USER_ID)}
+                                                            />
+                                                        </td>
+                                                        <td>{item.USER_ID}</td>
+                                                        <td>{item.USER_NM}</td>
+                                                        <td>{item.USER_TYP === 'S' ? '관리자' : '일반사용자'}</td>
+                                                    </tr>
+                                                ));
+                                        }
+                                        return <tr><td colSpan={5} className="vm-cell-empty">복사 대상이 없습니다.</td></tr>;
+                                    })()}
                                 </tbody>
                             </table>
                         </div>
@@ -267,7 +333,7 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
                 <div className="perm-grid-row perm-bottom-row">
                     {/* Bottom Left: Permission Settings (TCM_ROLEPGMUSERAUTH) */}
                     <div className="mgmt-card perm-card-program-perm">
-                        <div className="vm-subgrid-header">프로그램 권한 설정 [ 메뉴별 전체 권한설정 - 전체:Ctrl_F2, 헤더 클릭 시 컬럼 전체 선택 ]</div>
+                        <div className="vm-subgrid-header">프로그램 권한 설정 [{permissions.length}건]</div>
                         <div className="mgmt-table-wrapper vm-table-wrapper-no-pad" style={{ flex: 1 }}>
                             <table className="mgmt-table perm-table-sticky">
                                 <thead>
@@ -281,7 +347,7 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
                                         <th></th>
                                         <th style={{ width: '90px' }}>ID</th>
                                         <th>명</th>
-                                        <th style={{ width: '70px' }}>업무</th>
+                                        <th style={{ width: '85px' }}>업무</th>
                                         <th style={{ width: '85px' }}>시작</th>
                                         <th style={{ width: '85px' }}>종료</th>
                                         <th style={{ width: '35px' }}>조회</th>
@@ -289,27 +355,29 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
                                         <th style={{ width: '35px' }}>저장</th>
                                         <th style={{ width: '35px' }}>삭제</th>
                                         <th style={{ width: '35px' }}>출력</th>
-                                        <th style={{ width: '35px' }}>엑셀</th>
                                         <th style={{ width: '35px' }}>업로드</th>
+                                        <th style={{ width: '35px' }}>엑셀</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {permissions.length > 0 ? (
                                         permissions.map((p, i) => (
                                             <tr key={p.PGM_ID} className="vm-row">
-                                                <td style={{ textAlign: 'center' }}>-</td>
+                                                <td>-</td>
                                                 <td className="perm-id-cell">{p.PGM_ID}</td>
                                                 <td>{p.PROGRAM_NM || '-'}</td>
-                                                <td style={{ textAlign: 'center' }}>{p.TASK_NM || '-'}</td>
-                                                <td className="perm-date-cell">{p.START_DT || '-'}</td>
-                                                <td className="perm-date-cell">{p.END_DT || '-'}</td>
-                                                <td style={{ textAlign: 'center' }}><input type="checkbox" checked={!!p.AUTH_SEARCH} onChange={() => togglePermission(i, 'AUTH_SEARCH')} /></td>
-                                                <td style={{ textAlign: 'center' }}><input type="checkbox" checked={!!p.AUTH_CONFIRM} onChange={() => togglePermission(i, 'AUTH_CONFIRM')} /></td>
-                                                <td style={{ textAlign: 'center' }}><input type="checkbox" checked={!!p.AUTH_SAVE} onChange={() => togglePermission(i, 'AUTH_SAVE')} /></td>
-                                                <td style={{ textAlign: 'center' }}><input type="checkbox" checked={!!p.AUTH_DELETE} onChange={() => togglePermission(i, 'AUTH_DELETE')} /></td>
-                                                <td style={{ textAlign: 'center' }}><input type="checkbox" checked={!!p.AUTH_PRINT} onChange={() => togglePermission(i, 'AUTH_PRINT')} /></td>
-                                                <td style={{ textAlign: 'center' }}><input type="checkbox" checked={!!p.AUTH_EXCEL} onChange={() => togglePermission(i, 'AUTH_EXCEL')} /></td>
-                                                <td style={{ textAlign: 'center' }}><input type="checkbox" checked={!!p.AUTH_UPLOAD} onChange={() => togglePermission(i, 'AUTH_UPLOAD')} /></td>
+                                                <td>{p.TASK_NM || '-'}</td>
+                                                <td>{p.START_DT || '-'}</td>
+                                                <td>{p.END_DT || '-'}</td>
+                                                <td>{p.CAN_SEARCH && <input type="checkbox" checked={!!p.AUTH_SEARCH} onChange={() => togglePermission(i, 'AUTH_SEARCH')} />}</td>
+                                                <td>{p.CAN_CONFIRM && <input type="checkbox" checked={!!p.AUTH_CONFIRM} onChange={() => togglePermission(i, 'AUTH_CONFIRM')} />}</td>
+                                                <td>{p.CAN_SAVE && <input type="checkbox" checked={!!p.AUTH_SAVE} onChange={() => togglePermission(i, 'AUTH_SAVE')} />}</td>
+                                                <td>{p.CAN_DELETE && <input type="checkbox" checked={!!p.AUTH_DELETE} onChange={() => togglePermission(i, 'AUTH_DELETE')} />}</td>
+                                                <td>{p.CAN_PRINT && <input type="checkbox" checked={!!p.AUTH_PRINT} onChange={() => togglePermission(i, 'AUTH_PRINT')} />}</td>
+                                                <td>{p.CAN_UPLOAD && <input type="checkbox" checked={!!p.AUTH_UPLOAD} onChange={() => togglePermission(i, 'AUTH_UPLOAD')} />}</td>
+                                                <td>{p.CAN_EXCEL && <input type="checkbox" checked={!!p.AUTH_EXCEL} onChange={() => togglePermission(i, 'AUTH_EXCEL')} />}</td>
+
+
                                             </tr>
                                         ))
                                     ) : (
@@ -341,8 +409,8 @@ const UserPermissionManagementContent: React.FC<Props> = ({ theme }) => {
                                     {pcPermissions.length > 0 ? (
                                         pcPermissions.map((pc, i) => (
                                             <tr key={i} className="vm-row">
-                                                <td style={{ textAlign: 'center' }}>+</td>
-                                                <td style={{ textAlign: 'center' }}><input type="checkbox" checked={!!pc.ALLOW_YN} readOnly /></td>
+                                                <td>+</td>
+                                                <td><input type="checkbox" checked={!!pc.ALLOW_YN} readOnly /></td>
                                                 <td><input className="bc-table-input" value={pc.DISK_INFO} readOnly title={pc.DISK_INFO} /></td>
                                                 <td><input className="bc-table-input" value={pc.MAC_ADDR} readOnly title={pc.MAC_ADDR} /></td>
                                                 <td><input className="bc-table-input" value={pc.REMARK} readOnly title={pc.REMARK} /></td>

@@ -78,9 +78,17 @@ const UserManagementContent: React.FC<Props> = ({ theme }) => {
     const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
+    const getTodayFormatted = () => {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        return `${yyyy}${mm}${dd}`;
+    };
+
     const [header, setHeader] = useState<UserHeader>({
-        USER_ID: '', LOGIN_ID: '', USER_NM: '', USER_TYP: '1', PASSWORD_NO: '',
-        JUMIN_NO: '', IPSA_DT: '', EXPIRE_DT: '', DEPT_CD: '', TEAM_CD: '',
+        USER_ID: '', LOGIN_ID: '', USER_NM: '', USER_TYP: 'M', PASSWORD_NO: '0000',
+        JUMIN_NO: '', IPSA_DT: getTodayFormatted(), EXPIRE_DT: '', DEPT_CD: '', TEAM_CD: '',
         POSITION_CD: '', DUTY_CD: '', USER_HP: '', USER_TEL: '', USER_EMAIL: '',
         BIRTH_DT: '', MARRIED_DT: '', SORT_SEQ: '0', EMAIL_ID: '', EMAIL_PW: '',
         PROPERTY_01: '', POPUP_YN: 'N', SERVICE_USEYN: 'N', LINK_ID: '',
@@ -137,11 +145,22 @@ const UserManagementContent: React.FC<Props> = ({ theme }) => {
         }
     };
 
-    const handleReset = () => {
+    const handleReset = async () => {
         setSelectedUserId(null);
+
+        let nextId = '';
+        try {
+            const res = await axios.get('/api/users/next-id');
+            if (res.data.success) nextId = res.data.nextId;
+        } catch (e) {
+            console.error('Next ID fetch failed', e);
+        }
+
+        const formattedDate = getTodayFormatted();
+
         setHeader({
-            USER_ID: '', LOGIN_ID: '', USER_NM: '', USER_TYP: '1', PASSWORD_NO: '',
-            JUMIN_NO: '', IPSA_DT: '', EXPIRE_DT: '', DEPT_CD: '', TEAM_CD: '',
+            USER_ID: nextId, LOGIN_ID: '', USER_NM: '', USER_TYP: 'M', PASSWORD_NO: '0000',
+            JUMIN_NO: '', IPSA_DT: formattedDate, EXPIRE_DT: '', DEPT_CD: '', TEAM_CD: '',
             POSITION_CD: '', DUTY_CD: '', USER_HP: '', USER_TEL: '', USER_EMAIL: '',
             BIRTH_DT: '', MARRIED_DT: '', SORT_SEQ: '0', EMAIL_ID: '', EMAIL_PW: '',
             PROPERTY_01: '', POPUP_YN: 'N', SERVICE_USEYN: 'N', LINK_ID: '',
@@ -157,8 +176,8 @@ const UserManagementContent: React.FC<Props> = ({ theme }) => {
     };
 
     const handleSave = async () => {
-        if (!header.USER_ID || !header.USER_NM) {
-            alert('사번과 사용자명은 필수입니다.');
+        if (!header.USER_ID || !header.USER_NM || !header.LOGIN_ID || !header.USER_TYP) {
+            alert('사번, 사용자명, 로그인ID, 사용자구분은 필수입니다.');
             return;
         }
         try {
@@ -210,7 +229,7 @@ const UserManagementContent: React.FC<Props> = ({ theme }) => {
                             <div className="mgmt-form-group">
                                 <label className="mgmt-label">사용자구분</label>
                                 <select className="mgmt-select" value={filterTyp} onChange={e => setFilterTyp(e.target.value)}>
-                                    <option value="">전체</option><option value="1">일반사용자</option><option value="S">관리자</option>
+                                    <option value="">전체</option><option value="M">일반사용자</option><option value="A">사용자관리자</option><option value="S">시스템관리자</option>
                                 </select>
                             </div>
                             <div className="mgmt-form-group">
@@ -268,17 +287,17 @@ const UserManagementContent: React.FC<Props> = ({ theme }) => {
                         <div className="mgmt-grid" style={{ maxHeight: '420px', overflowY: 'auto', paddingRight: '8px' }}>
                             {/* Row 1 */}
                             <div className="mgmt-form-group mgmt-col-span-3">
-                                <label className="mgmt-label">사번</label>
+                                <label className="mgmt-label vm-label-danger">사번</label>
                                 <input className="mgmt-input" value={header.USER_ID} onChange={e => handleHeaderChange('USER_ID', e.target.value)} disabled={!!selectedUserId} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
-                                <label className="mgmt-label">사용자구분</label>
+                                <label className="mgmt-label vm-label-danger">사용자구분</label>
                                 <select className="mgmt-select" value={header.USER_TYP} onChange={e => handleHeaderChange('USER_TYP', e.target.value)}>
-                                    <option value="1">일반사용자</option><option value="S">관리자</option>
+                                    <option value="">전체</option><option value="M">일반사용자</option><option value="A">사용자관리자</option><option value="S">시스템관리자</option>
                                 </select>
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
-                                <label className="mgmt-label">로그인ID</label>
+                                <label className="mgmt-label vm-label-danger">로그인ID</label>
                                 <input className="mgmt-input" value={header.LOGIN_ID} onChange={e => handleHeaderChange('LOGIN_ID', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
@@ -310,7 +329,7 @@ const UserManagementContent: React.FC<Props> = ({ theme }) => {
                                 <input className="mgmt-input" value={header.JUMIN_NO} onChange={e => handleHeaderChange('JUMIN_NO', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-6">
-                                <label className="mgmt-label">노인단가구분</label>
+                                <label className="mgmt-label">노임단가구분</label>
                                 <select className="mgmt-select" value={header.PROPERTY_01} onChange={e => handleHeaderChange('PROPERTY_01', e.target.value)}>
                                     <option value="">-</option><option value="1">구분1</option>
                                 </select>

@@ -464,7 +464,7 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
                                             value={d.REMARK || ''}
                                             onChange={(e) => handleCellChange(index, 'REMARK', e.target.value)} />
                                     </td>
-                                    <td className="dm-table-cell-center dm-col-date">
+                                    <td className="dm-col-date">
                                         {formatDateTime(d.REGISTDT || '')}
                                     </td>
                                 </tr>

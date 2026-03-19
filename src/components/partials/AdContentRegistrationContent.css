@@ -1,0 +1,105 @@
+/* AdContentRegistrationContent.css */
+.arc-toolbar-card {
+    margin-bottom: 0.75rem;
+}
+
+.arc-title-text {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: var(--text-main);
+    letter-spacing: -0.025em;
+}
+
+.arc-main-layout {
+    display: flex;
+    gap: 0.75rem;
+    height: calc(100vh - 280px);
+    min-height: 600px;
+}
+
+.arc-sidebar-card {
+    width: 450px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.arc-detail-card {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.arc-detail-filter-bar {
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    border-bottom: 1px solid var(--mgmt-glass-border);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.arc-detail-banner {
+    padding: 0.5rem 1rem;
+    background: var(--mgmt-primary-glow);
+    color: var(--mgmt-primary);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+.AdContentRegistrationContent .mgmt-table th {
+    background: var(--table-header);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.AdContentRegistrationContent tr.selected {
+    background: rgba(var(--mgmt-primary-rgb), 0.15) !important;
+}
+
+.AdContentRegistrationContent tr.selected td {
+    color: var(--mgmt-primary);
+    font-weight: 700;
+}
+
+.AdContentRegistrationContent .mgmt-input {
+    font-size: 0.85rem !important;
+    padding: 0.4rem 0.6rem !important;
+}
+
+.table-inner-input {
+    width: 100%;
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-main) !important;
+    padding: 2px 5px !important;
+    border-radius: 2px !important;
+    height: 30px;
+    font-size: 0.85rem;
+}
+
+.table-inner-input:focus {
+    background: var(--mgmt-input-bg) !important;
+    outline: 1px solid var(--mgmt-primary) !important;
+}
+
+.AdContentRegistrationContent select.table-inner-input {
+    appearance: none;
+    cursor: pointer;
+}
+
+.AdContentRegistrationContent table.mgmt-table td {
+    padding: 0 4px !important;
+    height: 38px;
+    vertical-align: middle;
+}
+
+.ellipsis-cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

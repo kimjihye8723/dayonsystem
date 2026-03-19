@@ -1,0 +1,92 @@
+.ble-layout-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: calc(100vh - 220px);
+    overflow: hidden;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.ble-card-summary {
+    flex: 1.2;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.ble-card-detail {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Custom styles for BLE log page */
+.ble-filter-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.ble-checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.ble-checkbox-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-main);
+}
+
+.ble-table th.group-header {
+    background: var(--bg-card-alt);
+    color: var(--mgmt-primary);
+    font-weight: 700;
+    border-bottom: 2px solid var(--mgmt-primary);
+}
+
+.ble-cell-center {
+    text-align: center;
+}
+
+.ble-cell-right {
+    text-align: right;
+    padding-right: 1.5rem !important;
+}
+
+.ble-row-selected {
+    background: rgba(var(--mgmt-primary-rgb), 0.15) !important;
+    border-left: 3px solid var(--mgmt-primary);
+}
+
+.ble-footer {
+    background: var(--bg-card-alt);
+    padding: 0.5rem 1rem;
+    border-top: 1px solid var(--glass-border);
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-muted);
+}
+
+.ble-footer-val {
+    color: var(--mgmt-primary);
+    margin-left: 0.5rem;
+}
+
+.ble-table {
+    width: 100% !important;
+}
+
+.ble-card-summary, .ble-card-detail {
+    min-width: 0;
+    width: 100%;
+}

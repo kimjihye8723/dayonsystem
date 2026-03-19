@@ -1,0 +1,124 @@
+/* UserLoginInfoContent.css - Restored modern design matching DeviceManagementContent */
+
+.mgmt-container {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.dm-title-text {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: var(--text-main);
+    letter-spacing: -0.025em;
+}
+
+.dm-toolbar-card {
+    margin-bottom: 0.75rem;
+}
+
+.dm-main-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.dm-info-bar {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--mgmt-glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.dm-tabs {
+    display: flex;
+    gap: 1rem;
+}
+
+.dm-tab {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--mgmt-primary);
+    position: relative;
+    padding-bottom: 0.25rem;
+}
+
+.dm-tab::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--mgmt-primary);
+    border-radius: 1px;
+}
+
+.dm-total-count {
+    background: var(--mgmt-primary-glow);
+    color: var(--mgmt-primary);
+    padding: 0.2rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.dm-table-wrapper {
+    min-height: 55vh;
+    max-height: calc(100vh - 320px);
+    overflow: auto !important;
+    width: 100%;
+    max-width: 1600px;
+}
+
+.dm-table-wrapper .mgmt-table {
+    width: 100%;
+}
+
+.dm-table-cell-center {
+    text-align: center;
+}
+
+.dm-table-empty {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+}
+
+/* Animations and Spinners */
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+[data-theme='light'] .mgmt-input[read-only] {
+    background: #f1f5f9;
+}

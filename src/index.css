@@ -144,12 +144,14 @@ h1 {
 }
 
 .sidebar {
-  width: 200px;
+  width: 200px !important;
+  min-width: 200px !important;
+  max-width: 200px !important;
   background: var(--bg-deep);
   border-right: 1px solid var(--glass-border);
   display: flex;
   flex-direction: column;
-  padding: 2rem 1.25rem;
+  padding: 2rem 1rem;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -198,6 +200,33 @@ h1 {
 .nav-item.active {
   background: var(--primary);
   color: white;
+}
+
+.nav-category {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: white;
+  background: #334155;
+  padding: 0.35rem 0.75rem;
+  margin: 0.75rem 0 0.25rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-divider {
+  height: 1px;
+  background: var(--glass-border);
+  margin: 0.5rem 0;
+  opacity: 0.5;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .tab-content-inner {
@@ -1310,6 +1339,7 @@ h1 {
   border: 1px solid transparent;
   position: relative;
   overflow: hidden;
+  opacity: 1;
 }
 
 .mgmt-toolbar-btn:hover {
@@ -1351,6 +1381,44 @@ h1 {
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* Common Filter Bar Styles (Shared across Management Tabs) */
+.perm-filter-bar {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  flex-wrap: wrap; /* Handle many filters */
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.perm-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.perm-filter-label {
+  margin-bottom: 0 !important;
+  width: auto !important;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.perm-filter-input-small {
+  width: 100px !important;
+}
+
+.perm-filter-select-medium {
+  width: 130px !important;
+}
+
+.perm-filter-search-input {
+  width: 250px !important;
+}
+
 /* Management Form Elements */
 .mgmt-form-group {
   display: flex;
@@ -1382,7 +1450,7 @@ h1 {
   align-items: center;
   justify-content: flex-start;
   gap: 0.4rem;
-  min-width: 123px;
+  min-width: 70px;
 }
 
 .mgmt-label.required::after {
@@ -1412,8 +1480,12 @@ h1 {
 
 /* Management Table Refinements */
 .mgmt-table-wrapper {
-  overflow-x: auto;
-  padding: 0 1.5rem 1.5rem;
+    flex: 1;
+    min-height: 55vh;
+    max-height: calc(100vh - 320px);
+    overflow: auto !important;
+    width: 100%;
+    max-width: 1150px;
 }
 
 .mgmt-table {
