@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Save, Trash2, RefreshCw, Plus, Search, FileSpreadsheet, Download } from 'lucide-react';
 import axios from 'axios';
 import XLSX from 'xlsx-js-style';
-import './DeviceManagementContent.css';
+import '../../styles/partials/DeviceManagementContent.css';
 
 // TCM_VENDOR_DEVICE 테이블 기준 인터페이스
 interface Device {

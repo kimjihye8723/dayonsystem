@@ -3,7 +3,7 @@ import { Save, Trash2, RefreshCw, Plus, Search } from 'lucide-react';
 import axios from 'axios';
 import { CKEditor } from '@ckeditor/ckeditor5-react';
 import ClassicEditor from '@ckeditor/ckeditor5-build-classic';
-import './BoardManagementContent.css';
+import '../../styles/partials/BoardManagementContent.css';
 
 interface Board {
     CORP_CD: string;
@@ -220,7 +220,7 @@ const BoardManagementContent: React.FC<Props> = ({ theme }) => {
             <div className="mgmt-card bm-filter-card">
                 <div className="mgmt-form-group horizontal">
                     <span className="mgmt-label">게시구분</span>
-                    <select className="mgmt-select bm-filter-select"
+                    <select className="mgmt-select bm-filter-select w-md"
                         value={filterBoardSec}
                         onChange={(e) => {
                             setFilterBoardSec(e.target.value);
@@ -242,7 +242,7 @@ const BoardManagementContent: React.FC<Props> = ({ theme }) => {
                 </div>
                 <div className="mgmt-form-group horizontal bm-filter-title">
                     <span className="mgmt-label">제목</span>
-                    <input type="text" value={searchTitle} onChange={(e) => setSearchTitle(e.target.value)} placeholder="검색어 입력..." className="mgmt-input" onKeyDown={e => e.key === 'Enter' && fetchBoards()} />
+                    <input type="text" value={searchTitle} onChange={(e) => setSearchTitle(e.target.value)} placeholder="검색어 입력..." className="mgmt-input w-lg" onKeyDown={e => e.key === 'Enter' && fetchBoards()} />
                 </div>
             </div>
 
@@ -287,14 +287,14 @@ const BoardManagementContent: React.FC<Props> = ({ theme }) => {
                             <div className="mgmt-grid bm-detail-form">
                                 <div className="mgmt-form-group mgmt-col-span-9">
                                     <label className="mgmt-label required">제목</label>
-                                    <input className="mgmt-input bm-title-input"
+                                    <input className="mgmt-input bm-title-input w-xl"
                                         value={selectedBoard.TX_TITLE}
                                         onChange={(e) => handleBoardChange('TX_TITLE', e.target.value)} />
                                 </div>
 
                                 <div className="mgmt-form-group mgmt-col-span-3">
                                     <label className="mgmt-label">게시구분</label>
-                                    <select className="mgmt-select" value={selectedBoard.BOARD_SEC} onChange={(e) => handleBoardChange('BOARD_SEC', e.target.value)}>
+                                    <select className="mgmt-select w-md" value={selectedBoard.BOARD_SEC} onChange={(e) => handleBoardChange('BOARD_SEC', e.target.value)}>
                                         <option value="01">공지사항</option>
                                         <option value="02">보도자료</option>
                                         <option value="03">기타</option>
@@ -304,11 +304,11 @@ const BoardManagementContent: React.FC<Props> = ({ theme }) => {
                                 <div className="mgmt-form-group mgmt-col-span-6">
                                     <label className="mgmt-label">게시기간</label>
                                     <div className="bm-date-range">
-                                        <input type="date" className="mgmt-input"
+                                        <input type="date" className="mgmt-input w-md"
                                             value={formatDate(selectedBoard.START_DT)}
                                             onChange={(e) => handleDateChange('START_DT', e.target.value)} />
                                         <span className="bm-date-separator">~</span>
-                                        <input type="date" className="mgmt-input"
+                                        <input type="date" className="mgmt-input w-md"
                                             value={formatDate(selectedBoard.END_DT)}
                                             onChange={(e) => handleDateChange('END_DT', e.target.value)} />
                                     </div>
@@ -316,7 +316,7 @@ const BoardManagementContent: React.FC<Props> = ({ theme }) => {
 
                                 <div className="mgmt-form-group mgmt-col-span-3">
                                     <label className="mgmt-label">사용여부</label>
-                                    <select className="mgmt-select" value={selectedBoard.USE_YN} onChange={(e) => handleBoardChange('USE_YN', e.target.value)}>
+                                    <select className="mgmt-select w-sm" value={selectedBoard.USE_YN} onChange={(e) => handleBoardChange('USE_YN', e.target.value)}>
                                         <option value="Y">사용</option>
                                         <option value="N">미사용</option>
                                     </select>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, Printer, FileSpreadsheet, X, BarChart3 } from 'lucide-react';
 import axios from 'axios';
-import './ContentAggContent.css';
+import '../../styles/partials/ContentAggContent.css';
 
 interface ContentAggData {
     LOG_DT: string;

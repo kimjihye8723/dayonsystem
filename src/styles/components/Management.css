@@ -1,0 +1,404 @@
+/* --- Premium Management Global Styles --- */
+
+/* Management Variables */
+:root {
+  --mgmt-primary: #3b82f6;
+  --mgmt-primary-glow: rgba(59, 130, 246, 0.4);
+  --mgmt-success: #10b981;
+  --mgmt-danger: #f43f5e;
+  --mgmt-warning: #f59e0b;
+  --mgmt-info: #0ea5e9;
+
+  --mgmt-glass-bg: rgba(255, 255, 255, 0.03);
+  --mgmt-glass-border: rgba(255, 255, 255, 0.08);
+  --mgmt-card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+[data-theme='light'] {
+  --mgmt-glass-bg: rgba(255, 255, 255, 0.7);
+  --mgmt-glass-border: rgba(226, 232, 240, 0.8);
+  --mgmt-card-shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.1);
+}
+
+/* Management Card & Layout */
+.mgmt-container {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.mgmt-card {
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+/* Management Toolbar */
+.mgmt-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  min-height: 60px;
+}
+
+.mgmt-btn-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Premium Toolbar Buttons */
+.mgmt-toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: 1px solid transparent;
+  position: relative;
+  overflow: hidden;
+  opacity: 1;
+}
+
+.mgmt-toolbar-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.mgmt-toolbar-btn:active {
+  transform: translateY(0);
+}
+
+/* Button Colors with Gradients */
+.mgmt-btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+}
+
+.mgmt-btn-primary:hover {
+  box-shadow: 0 0 15px var(--mgmt-primary-glow);
+}
+
+.mgmt-btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.mgmt-btn-danger {
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+  color: white;
+}
+
+.mgmt-btn-secondary {
+  background: var(--mgmt-glass-bg);
+  border-color: var(--mgmt-glass-border);
+  color: var(--text-main);
+}
+
+.mgmt-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Common Filter Bar Styles (Shared across Management Tabs) */
+.perm-filter-bar {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.perm-filter-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.perm-filter-label {
+  margin-bottom: 0 !important;
+  width: auto !important;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.perm-filter-input-small {
+  width: 100px !important;
+}
+
+.perm-filter-select-medium {
+  width: 130px !important;
+}
+
+.perm-filter-search-input {
+  width: 250px !important;
+}
+
+/* Management Form Elements */
+.mgmt-form-group {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0;
+}
+
+.mgmt-form-group.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+}
+
+.mgmt-form-group.horizontal {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mgmt-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.4rem;
+  min-width: 80px;
+}
+
+.mgmt-label.required::after {
+  content: '*';
+  color: var(--mgmt-danger);
+  font-size: 1.1rem;
+}
+
+.mgmt-input,
+.mgmt-select {
+  background: var(--input-bg);
+  border: 1px solid var(--mgmt-glass-border);
+  padding: 0.6rem 0.875rem;
+  color: var(--text-main);
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.2s ease;
+  width: 100%;
+  max-width: 300px;
+}
+
+.mgmt-input:focus,
+.mgmt-select:focus {
+  border-color: var(--mgmt-primary);
+  background: rgba(59, 130, 246, 0.05);
+  box-shadow: 0 0 0 3px var(--mgmt-primary-glow);
+}
+
+/* Grid System */
+.mgmt-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1rem;
+}
+
+.mgmt-col-span-1 {
+  grid-column: span 1;
+}
+
+.mgmt-col-span-2 {
+  grid-column: span 2;
+}
+
+.mgmt-col-span-3 {
+  grid-column: span 3;
+}
+
+.mgmt-col-span-4 {
+  grid-column: span 4;
+}
+
+.mgmt-col-span-5 {
+  grid-column: span 5;
+}
+
+.mgmt-col-span-6 {
+  grid-column: span 6;
+}
+
+.mgmt-col-span-7 {
+  grid-column: span 7;
+}
+
+.mgmt-col-span-8 {
+  grid-column: span 8;
+}
+
+.mgmt-col-span-9 {
+  grid-column: span 9;
+}
+
+.mgmt-col-span-10 {
+  grid-column: span 10;
+}
+
+.mgmt-col-span-11 {
+  grid-column: span 11;
+}
+
+.mgmt-col-span-12 {
+  grid-column: span 12;
+}
+
+.mgmt-full-width {
+  grid-column: span 12;
+}
+
+/* Input Width Utilities */
+.w-xs {
+  max-width: 80px;
+}
+
+.w-sm {
+  max-width: 120px;
+}
+
+.w-md {
+  max-width: 200px;
+}
+
+.w-lg {
+  max-width: 350px;
+}
+
+.w-xl {
+  max-width: 500px;
+}
+
+.w-full {
+  width: 100%;
+  max-width: none;
+}
+
+/* Management Table Refinements */
+.mgmt-table-wrapper {
+  flex: 1;
+  min-height: 55vh;
+  max-height: calc(100vh - 320px);
+  overflow: auto !important;
+  width: 100%;
+  max-width: 1150px;
+}
+
+.mgmt-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.mgmt-table th {
+  background: var(--table-header);
+  padding: 0.75rem 1rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+  border-bottom: 1px solid var(--glass-border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.mgmt-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--table-border);
+  font-size: 0.9rem;
+  color: var(--text-main);
+  transition: all 0.2s;
+}
+
+.mgmt-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* Checkbox Styling */
+.mgmt-checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--mgmt-glass-border);
+  cursor: pointer;
+}
+
+/* Loading & Empty States */
+.mgmt-loading-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  color: var(--mgmt-primary);
+  font-weight: 600;
+}
+
+.mgmt-empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-muted);
+}
+
+/* Export Dropdown */
+.export-container {
+  position: relative;
+}
+
+.export-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 5px;
+  background: #f1f3f4;
+  border: 1px solid #bdc1c6;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  min-width: 180px;
+  padding: 4px 0;
+}
+
+.export-dropdown::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20px;
+  width: 1px;
+  height: 100%;
+  background: #dadce0;
+}
+
+.export-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px 8px 32px;
+  color: #3c4043;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.export-item:hover {
+  background: #e1e3e6;
+}
+
+.export-divider {
+  height: 1px;
+  background: #dadce0;
+  margin: 4px 0;
+}

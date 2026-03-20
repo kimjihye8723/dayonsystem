@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, Printer, FileSpreadsheet, X, Activity } from 'lucide-react';
 import axios from 'axios';
-import './BleLogAggContent.css';
+import '../../styles/partials/BleLogAggContent.css';
 
 interface BleSummary {
     LOG_DT: string;

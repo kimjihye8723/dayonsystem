@@ -25,6 +25,16 @@ import StoreStatusContent from './partials/StoreStatusContent';
 import AdPlayLogContent from './partials/AdPlayLogContent';
 import ContentAggContent from './partials/ContentAggContent';
 import BleLogAggContent from './partials/BleLogAggContent';
+import '../styles/components/DashboardLayout.css';
+import '../styles/components/TopNav.css';
+import '../styles/components/Modal.css';
+import '../styles/components/Tabs.css';
+import '../styles/components/Management.css';
+import '../styles/components/SummaryCard.css';
+import '../styles/components/DataTable.css';
+import '../styles/components/FilterBar.css';
+import '../styles/components/Chart.css';
+import '../styles/components/RealTimeStatus.css';
 
 interface Tab {
     id: string;

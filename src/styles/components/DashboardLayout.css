@@ -1,0 +1,21 @@
+/* Dashboard Layout */
+.dashboard-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.tab-content-inner {
+  background: var(--bg-card);
+  min-height: calc(100vh - 120px);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.25rem;
+  padding: 1.5rem;
+  width: 100%;
+  font-size: 16px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 0;
+  background-color: var(--bg-main);
+}

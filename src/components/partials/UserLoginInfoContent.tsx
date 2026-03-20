@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, FileSpreadsheet, Printer, X, Monitor } from 'lucide-react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import './UserLoginInfoContent.css';
+import '../../styles/partials/UserLoginInfoContent.css';
 
 interface LoginInfo {
     LOGIN_KEY: string;

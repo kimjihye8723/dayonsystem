@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Plus, Save, Trash2, RefreshCw, X, Search, Database } from 'lucide-react';
 import axios from 'axios';
-import './BasicCodeContent.css';
+import '../../styles/partials/BasicCodeContent.css';
 
 interface BasicCode {
     CORP_CD: string;

@@ -4,7 +4,7 @@ import {
     UserPlus, X
 } from 'lucide-react';
 import axios from 'axios';
-import './UserManagementContent.css';
+import '../../styles/partials/UserManagementContent.css';
 
 // --- Interfaces (이미지 항목 기준 확장) ---
 interface UserItem {
@@ -288,49 +288,49 @@ const UserManagementContent: React.FC<Props> = ({ theme }) => {
                             {/* Row 1 */}
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label vm-label-danger">사번</label>
-                                <input className="mgmt-input" value={header.USER_ID} onChange={e => handleHeaderChange('USER_ID', e.target.value)} disabled={!!selectedUserId} />
+                                <input className="mgmt-input w-sm" value={header.USER_ID} onChange={e => handleHeaderChange('USER_ID', e.target.value)} disabled={!!selectedUserId} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label vm-label-danger">사용자구분</label>
-                                <select className="mgmt-select" value={header.USER_TYP} onChange={e => handleHeaderChange('USER_TYP', e.target.value)}>
+                                <select className="mgmt-select w-sm" value={header.USER_TYP} onChange={e => handleHeaderChange('USER_TYP', e.target.value)}>
                                     <option value="">전체</option><option value="M">일반사용자</option><option value="A">사용자관리자</option><option value="S">시스템관리자</option>
                                 </select>
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label vm-label-danger">로그인ID</label>
-                                <input className="mgmt-input" value={header.LOGIN_ID} onChange={e => handleHeaderChange('LOGIN_ID', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.LOGIN_ID} onChange={e => handleHeaderChange('LOGIN_ID', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">EMAILID</label>
-                                <input className="mgmt-input" value={header.EMAIL_ID} onChange={e => handleHeaderChange('EMAIL_ID', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.EMAIL_ID} onChange={e => handleHeaderChange('EMAIL_ID', e.target.value)} />
                             </div>
 
                             {/* Row 2 */}
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label vm-label-danger">사용자명</label>
-                                <input className="mgmt-input" value={header.USER_NM} onChange={e => handleHeaderChange('USER_NM', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.USER_NM} onChange={e => handleHeaderChange('USER_NM', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">비밀번호</label>
-                                <input type="password" className="mgmt-input" value={header.PASSWORD_NO} onChange={e => handleHeaderChange('PASSWORD_NO', e.target.value)} />
+                                <input type="password" className="mgmt-input w-md" value={header.PASSWORD_NO} onChange={e => handleHeaderChange('PASSWORD_NO', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-6">
                                 <label className="mgmt-label">EMAIL비밀번호</label>
-                                <input type="password" className="mgmt-input" value={header.EMAIL_PW} onChange={e => handleHeaderChange('EMAIL_PW', e.target.value)} />
+                                <input type="password" className="mgmt-input w-md" value={header.EMAIL_PW} onChange={e => handleHeaderChange('EMAIL_PW', e.target.value)} />
                             </div>
 
                             {/* Row 3 */}
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label vm-label-danger">입사일자</label>
-                                <input type="date" className="mgmt-input" value={header.IPSA_DT ? `${header.IPSA_DT.slice(0, 4)}-${header.IPSA_DT.slice(4, 6)}-${header.IPSA_DT.slice(6, 8)}` : ''} onChange={e => handleHeaderChange('IPSA_DT', e.target.value.replace(/-/g, ''))} />
+                                <input type="date" className="mgmt-input w-md" value={header.IPSA_DT ? `${header.IPSA_DT.slice(0, 4)}-${header.IPSA_DT.slice(4, 6)}-${header.IPSA_DT.slice(6, 8)}` : ''} onChange={e => handleHeaderChange('IPSA_DT', e.target.value.replace(/-/g, ''))} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">주민번호</label>
-                                <input className="mgmt-input" value={header.JUMIN_NO} onChange={e => handleHeaderChange('JUMIN_NO', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.JUMIN_NO} onChange={e => handleHeaderChange('JUMIN_NO', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-6">
                                 <label className="mgmt-label">노임단가구분</label>
-                                <select className="mgmt-select" value={header.PROPERTY_01} onChange={e => handleHeaderChange('PROPERTY_01', e.target.value)}>
+                                <select className="mgmt-select w-md" value={header.PROPERTY_01} onChange={e => handleHeaderChange('PROPERTY_01', e.target.value)}>
                                     <option value="">-</option><option value="1">구분1</option>
                                 </select>
                             </div>
@@ -338,11 +338,11 @@ const UserManagementContent: React.FC<Props> = ({ theme }) => {
                             {/* Row 4 */}
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">부서</label>
-                                <input className="mgmt-input" value={header.DEPT_CD} onChange={e => handleHeaderChange('DEPT_CD', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.DEPT_CD} onChange={e => handleHeaderChange('DEPT_CD', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">퇴사일자</label>
-                                <input type="date" className="mgmt-input" value={header.EXPIRE_DT ? `${header.EXPIRE_DT.slice(0, 4)}-${header.EXPIRE_DT.slice(4, 6)}-${header.EXPIRE_DT.slice(6, 8)}` : ''} onChange={e => handleHeaderChange('EXPIRE_DT', e.target.value.replace(/-/g, ''))} />
+                                <input type="date" className="mgmt-input w-md" value={header.EXPIRE_DT ? `${header.EXPIRE_DT.slice(0, 4)}-${header.EXPIRE_DT.slice(4, 6)}-${header.EXPIRE_DT.slice(6, 8)}` : ''} onChange={e => handleHeaderChange('EXPIRE_DT', e.target.value.replace(/-/g, ''))} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-6">
                                 <div className="vm-check-group" style={{ marginTop: '1.2rem' }}>
@@ -358,63 +358,64 @@ const UserManagementContent: React.FC<Props> = ({ theme }) => {
                             {/* Row 5 */}
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">팀</label>
-                                <input className="mgmt-input" value={header.TEAM_CD} onChange={e => handleHeaderChange('TEAM_CD', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.TEAM_CD} onChange={e => handleHeaderChange('TEAM_CD', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">직책</label>
-                                <input className="mgmt-input" value={header.DUTY_CD} onChange={e => handleHeaderChange('DUTY_CD', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.DUTY_CD} onChange={e => handleHeaderChange('DUTY_CD', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-6">
                                 <label className="mgmt-label">연결사용자ID</label>
-                                <input className="mgmt-input" value={header.LINK_ID} onChange={e => handleHeaderChange('LINK_ID', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.LINK_ID} onChange={e => handleHeaderChange('LINK_ID', e.target.value)} />
                             </div>
 
                             {/* Row 6 */}
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">핸드폰</label>
-                                <input className="mgmt-input" value={header.USER_HP} onChange={e => handleHeaderChange('USER_HP', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.USER_HP} onChange={e => handleHeaderChange('USER_HP', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">전화번호</label>
-                                <input className="mgmt-input" value={header.USER_TEL} onChange={e => handleHeaderChange('USER_TEL', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.USER_TEL} onChange={e => handleHeaderChange('USER_TEL', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-6">
                                 <label className="mgmt-label">인센티브지급율</label>
-                                <input className="mgmt-input" value={header.INCENTIVE_RAT} onChange={e => handleHeaderChange('INCENTIVE_RAT', e.target.value)} />
+                                <input className="mgmt-input w-sm" value={header.INCENTIVE_RAT} onChange={e => handleHeaderChange('INCENTIVE_RAT', e.target.value)} />
                             </div>
 
                             {/* Row 7 */}
                             <div className="mgmt-form-group mgmt-col-span-6">
                                 <label className="mgmt-label">이메일</label>
-                                <input className="mgmt-input" value={header.USER_EMAIL} onChange={e => handleHeaderChange('USER_EMAIL', e.target.value)} />
+                                <input className="mgmt-input w-lg" value={header.USER_EMAIL} onChange={e => handleHeaderChange('USER_EMAIL', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-6">
                                 <label className="mgmt-label">출력순서</label>
-                                <input className="mgmt-input" value={header.SORT_SEQ} onChange={e => handleHeaderChange('SORT_SEQ', e.target.value)} />
+                                <input className="mgmt-input w-sm" value={header.SORT_SEQ} onChange={e => handleHeaderChange('SORT_SEQ', e.target.value)} />
                             </div>
 
                             {/* Row 8 */}
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">생년월일</label>
-                                <input type="date" className="mgmt-input" value={header.BIRTH_DT ? `${header.BIRTH_DT.slice(0, 4)}-${header.BIRTH_DT.slice(4, 6)}-${header.BIRTH_DT.slice(6, 8)}` : ''} onChange={e => handleHeaderChange('BIRTH_DT', e.target.value.replace(/-/g, ''))} />
+                                <input type="date" className="mgmt-input w-md" value={header.BIRTH_DT ? `${header.BIRTH_DT.slice(0, 4)}-${header.BIRTH_DT.slice(4, 6)}-${header.BIRTH_DT.slice(6, 8)}` : ''} onChange={e => handleHeaderChange('BIRTH_DT', e.target.value.replace(/-/g, ''))} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">결혼기념일</label>
-                                <input type="date" className="mgmt-input" value={header.MARRIED_DT ? `${header.MARRIED_DT.slice(0, 4)}-${header.MARRIED_DT.slice(4, 6)}-${header.MARRIED_DT.slice(6, 8)}` : ''} onChange={e => handleHeaderChange('MARRIED_DT', e.target.value.replace(/-/g, ''))} />
+                                <input type="date" className="mgmt-input w-md" value={header.MARRIED_DT ? `${header.MARRIED_DT.slice(0, 4)}-${header.MARRIED_DT.slice(4, 6)}-${header.MARRIED_DT.slice(6, 8)}` : ''} onChange={e => handleHeaderChange('MARRIED_DT', e.target.value.replace(/-/g, ''))} />
                             </div>
+                            <div className="mgmt-form-group mgmt-col-span-6" />
 
                             {/* Row 9 - 계좌 */}
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">은행계좌</label>
-                                <input className="mgmt-input" value={header.ACCOUNT_CD} onChange={e => handleHeaderChange('ACCOUNT_CD', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.ACCOUNT_CD} onChange={e => handleHeaderChange('ACCOUNT_CD', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-3">
                                 <label className="mgmt-label">계좌번호</label>
-                                <input className="mgmt-input" value={header.ACCOUNT_NO} onChange={e => handleHeaderChange('ACCOUNT_NO', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.ACCOUNT_NO} onChange={e => handleHeaderChange('ACCOUNT_NO', e.target.value)} />
                             </div>
                             <div className="mgmt-form-group mgmt-col-span-6">
                                 <label className="mgmt-label">예금주</label>
-                                <input className="mgmt-input" value={header.ACCOUNT_NM} onChange={e => handleHeaderChange('ACCOUNT_NM', e.target.value)} />
+                                <input className="mgmt-input w-md" value={header.ACCOUNT_NM} onChange={e => handleHeaderChange('ACCOUNT_NM', e.target.value)} />
                             </div>
 
                             {/* Row 10 - 주소 */}

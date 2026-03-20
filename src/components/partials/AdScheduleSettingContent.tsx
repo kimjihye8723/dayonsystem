@@ -4,7 +4,7 @@ import {
     RefreshCw, Search, FileSpreadsheet, Printer, Trash2, X,
     Calendar, Save, FileCheck
 } from 'lucide-react';
-import './AdScheduleSettingContent.css';
+import '../../styles/partials/AdScheduleSettingContent.css';
 
 interface AdSchedule {
     SCHEDULE_KEY: string;

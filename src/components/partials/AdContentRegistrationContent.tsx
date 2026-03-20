@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, CloudUpload, Film } from 'lucide-react';
 import axios from 'axios';
-import './AdContentRegistrationContent.css';
+import '../../styles/partials/AdContentRegistrationContent.css';
 
 interface AdContent {
     CONTENTS_ID: string;

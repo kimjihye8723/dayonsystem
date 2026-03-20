@@ -5,6 +5,7 @@ import logoLight from '../assets/joot_ams_b.png';
 import { Sun, Moon } from 'lucide-react';
 
 import axios from 'axios';
+import '../styles/components/Login.css';
 
 const Login: React.FC = () => {
     const navigate = useNavigate();

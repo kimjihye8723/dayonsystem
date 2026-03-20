@@ -1,0 +1,35 @@
+/* Data Table Styles */
+.data-card {
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--glass-border);
+  padding: 2rem;
+  overflow: hidden;
+  border-radius: 1.25rem;
+  box-shadow: rgba(0, 0, 0, 0.05) 0px 4px 12px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th {
+  text-align: left;
+  padding: 1.25rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.data-table td {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+  font-size: 0.95rem;
+}
+
+.data-table tr:hover {
+  background: var(--glass);
+}

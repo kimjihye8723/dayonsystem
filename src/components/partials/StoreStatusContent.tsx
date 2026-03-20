@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, Printer, FileSpreadsheet, X, Monitor } from 'lucide-react';
 import axios from 'axios';
-import './StoreStatusContent.css';
+import '../../styles/partials/StoreStatusContent.css';
 
 interface StoreStatus {
     VENDOR_CD: string;

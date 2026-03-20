@@ -3,7 +3,7 @@ import {
     Users, RefreshCw, Search, Printer, FileSpreadsheet, X
 } from 'lucide-react';
 import axios from 'axios';
-import './UserStatusContent.css';
+import '../../styles/partials/UserStatusContent.css';
 
 interface UserStatusItem {
     USER_ID: string;

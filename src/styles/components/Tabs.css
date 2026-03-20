@@ -1,0 +1,73 @@
+/* Tabs Styles */
+.tabs-container {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 3px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px; /* Space for scrollbar */
+}
+
+/* Styled scrollbar for tabs */
+.tabs-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabs-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 2px;
+}
+
+.tabs-container::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+[data-theme='dark'] .tabs-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab {
+  padding: 0.6rem 2rem;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-bottom: none;
+  border-radius: 0.25rem 0.25rem 0 0;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+  min-width: 120px;
+  flex-shrink: 0;
+  justify-content: space-between;
+}
+
+.tab.active {
+  background: var(--bg-card);
+  color: var(--text-main);
+  border-bottom: 2px solid var(--primary);
+  font-weight: 700;
+}
+
+.tab-close-icon {
+  color: var(--text-muted);
+  opacity: 0.5;
+  padding: 2px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.tab-close-icon:hover {
+  background: rgba(0, 0, 0, 0.05);
+  opacity: 1;
+  color: #ef4444;
+}
+
+[data-theme='dark'] .tab-close-icon:hover {
+  background: rgba(255, 255, 255, 0.1);
+}

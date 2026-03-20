@@ -3,7 +3,7 @@ import {
     ShieldCheck, RefreshCw, Search, Save, X, Plus
 } from 'lucide-react';
 import axios from 'axios';
-import './UserPermissionManagementContent.css';
+import '../../styles/partials/UserPermissionManagementContent.css';
 
 interface UserSearchItem {
     USER_NM: string;

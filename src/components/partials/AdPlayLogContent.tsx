@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, Printer, FileSpreadsheet, X, History as HistoryIcon, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import axios from 'axios';
-import './AdPlayLogContent.css';
+import '../../styles/partials/AdPlayLogContent.css';
 
 interface AdPlayLog {
     VENDOR_NM: string;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, CloudUpload, FileVideo } from 'lucide-react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import './ContentsFileManagementContent.css';
+import '../../styles/partials/ContentsFileManagementContent.css';
 
 interface FileDate {
     REG_DT: string;

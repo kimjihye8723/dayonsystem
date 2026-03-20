@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Printer, FileSpreadsheet, CalendarDays, FilePenLine, SquareX } from 'lucide-react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
-import './TodayAppliedScheduleContent.css';
+import '../../styles/partials/TodayAppliedScheduleContent.css';
 
 interface TodaySchedule {
     VENDOR_CD: string;

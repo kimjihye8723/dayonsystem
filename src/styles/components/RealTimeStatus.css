@@ -1,0 +1,168 @@
+/* Real-time Status Specific Cards */
+.rt-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme='dark'] .rt-card {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+[data-theme='light'] .rt-card {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+}
+
+.rt-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.rt-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background: radial-gradient(circle at top right, var(--accent-light, transparent) 0%, transparent 70%);
+  opacity: 0.2;
+  pointer-events: none;
+}
+
+.rt-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rt-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rt-card-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.rt-value-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.rt-main-value {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.rt-unit {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.rt-grid-mini {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.rt-mini-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.rt-mini-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.rt-mini-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+/* Color Accents for RT Cards */
+.rt-sky {
+  --accent-light: #38bdf8;
+}
+
+.rt-sky .rt-main-value {
+  color: #38bdf8;
+}
+
+.rt-sky .rt-card-icon {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.rt-emerald {
+  --accent-light: #34d399;
+}
+
+.rt-emerald .rt-main-value {
+  color: #34d399;
+}
+
+.rt-emerald .rt-card-icon {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.1);
+}
+
+.rt-rose {
+  --accent-light: #fb7185;
+}
+
+.rt-rose .rt-main-value {
+  color: #fb7185;
+}
+
+.rt-rose .rt-card-icon {
+  color: #fb7185;
+  background: rgba(251, 113, 133, 0.1);
+}
+
+.rt-amber {
+  --accent-light: #fbbf24;
+}
+
+.rt-amber .rt-main-value {
+  color: #fbbf24;
+}
+
+.rt-amber .rt-card-icon {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+}

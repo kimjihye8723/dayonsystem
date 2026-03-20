@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, Printer, FileSpreadsheet, X, Landmark } from 'lucide-react';
 import axios from 'axios';
 import XLSX from 'xlsx-js-style';
-import './VendorStatusContent.css';
+import '../../styles/partials/VendorStatusContent.css';
 
 interface VendorStatus {
     VENDOR_CD: string;

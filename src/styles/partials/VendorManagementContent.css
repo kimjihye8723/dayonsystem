@@ -417,7 +417,7 @@
 }
 
 .vm-input-time {
-    width: 70px;
+    width: 70px !important;
     text-align: center;
 }
 
