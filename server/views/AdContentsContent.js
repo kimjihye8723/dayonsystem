@@ -185,7 +185,7 @@ router.delete('/ad-contents', (req, res) => {
 });
 
 // TODO: 파일업로드 작업 미완 - 웹게시 환경 확정 시 수정 필요
-const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
+const uploadDir = 'D:\\dayon_file';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -224,7 +224,7 @@ router.get('/contents-files/download', (req, res) => {
     const { filename } = req.query;
     if (!filename) return res.status(400).send('파일명이 필요합니다.');
 
-    const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
+    const uploadDir = 'D:\\dayon_file';
     const filePath = path.join(uploadDir, filename);
 
     if (fs.existsSync(filePath)) {
