@@ -313,7 +313,8 @@
     margin-top: 1.5rem;
     padding-top: 1.5rem;
     border-top: 1px solid var(--mgmt-glass-border);
-    flex: 1;
+    flex: none;
+    height: 400px;
     display: flex;
     gap: 1.25rem;
     overflow: hidden;
@@ -448,9 +449,7 @@
     resize: none;
 }
 
-.vm-subgrid-table-wrapper {
-    height: 180px;
-}
+
 
 .vm-subgrid-box-small {
     max-width: 350px;

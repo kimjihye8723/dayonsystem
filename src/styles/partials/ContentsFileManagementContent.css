@@ -47,6 +47,7 @@
 
 .cfm-detail-card {
     flex: 1;
+    max-width: 1260px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -67,11 +68,11 @@
     max-height: calc(100vh - 320px);
     overflow: auto !important;
     width: 100%;
-    max-width: 1250px;
+    max-width: 100%;
 }
 
 .cfm-table-wrapper .mgmt-table {
-    min-width: 1400px;
+    min-width: 1250px;
 }
 
 /* Sidebar Table Specifics */

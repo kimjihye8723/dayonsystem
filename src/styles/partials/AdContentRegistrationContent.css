@@ -28,15 +28,23 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    max-width: 986px;
 }
 
 .arc-detail-filter-bar {
-    padding: 0.75rem 1.25rem;
+    padding: 0.75rem 0.75rem;
     display: flex;
-    gap: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
     align-items: center;
     border-bottom: 1px solid var(--mgmt-glass-border);
     background: rgba(255, 255, 255, 0.01);
+}
+
+.perm-filter-label {
+    min-width: 65px;
+    text-align: right;
+    display: inline-block;
 }
 
 .arc-detail-banner {

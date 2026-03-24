@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, CloudUpload, Film } from 'lucide-react';
+import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, CloudUpload, Film, Plus } from 'lucide-react';
 import axios from 'axios';
 import '../../styles/partials/AdContentRegistrationContent.css';
 
@@ -7,6 +7,7 @@ interface AdContent {
     CONTENTS_ID: string;
     REG_DT: string;
     ADVERTISER: string;
+    VENDOR_CD?: string;
     TITLE: string;
     FILE_COUNT: number;
     USE_YN: string;
@@ -38,15 +39,27 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
     const [loading, setLoading] = useState(false);
     
     // Filters
-    const [startDate, setStartDate] = useState(new Date(new Date().setMonth(new Date().getMonth() - 3)).toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState(new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
     const [advertiserSearch, setAdvertiserSearch] = useState('');
 
-    const fetchContents = useCallback(async () => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [activeFiles, setActiveFiles] = useState<any[]>([]);
+    const [selectedModalFileKeys, setSelectedModalFileKeys] = useState<Set<string>>(new Set());
+    const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+
+    // Vendor Search Modal
+    const [isVendorModalOpen, setIsVendorModalOpen] = useState(false);
+    const [vendorModalTarget, setVendorModalTarget] = useState<'filter' | 'detail' | null>(null);
+    const [vendorList, setVendorList] = useState<any[]>([]);
+    const [vendorSearchKeyword, setVendorSearchKeyword] = useState('');
+
+    const fetchContents = useCallback(async (overrideAdvertiser?: string) => {
         try {
             setLoading(true);
+            const adv = typeof overrideAdvertiser === 'string' ? overrideAdvertiser : advertiserSearch;
             const res = await axios.get('/api/ad-contents', {
-                params: { startDate, endDate, advertiser: advertiserSearch }
+                params: { startDate, endDate, advertiser: adv }
             });
             if (res.data.success) {
                 setContents(res.data.contents);
@@ -92,7 +105,8 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
     }, [fetchContents, fetchEffects]);
 
     const handleRefresh = () => {
-        fetchContents();
+        setAdvertiserSearch('');
+        fetchContents('');
         if (selectedContent) fetchFiles(selectedContent);
     };
 
@@ -137,6 +151,142 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
         }
     };
 
+    const handleAddContent = () => {
+        const newTempId = `TEMP_${Date.now()}`;
+        const newContent: AdContent = {
+            CONTENTS_ID: newTempId,
+            REG_DT: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+            ADVERTISER: '',
+            TITLE: '새 광고 콘텐츠',
+            FILE_COUNT: 0,
+            USE_YN: 'Y'
+        };
+        setContents([newContent, ...contents]);
+        setSelectedContent(newContent);
+        setFiles([]); 
+    };
+
+    const handleDeleteContent = async () => {
+        if (!selectedContent) {
+            alert('삭제할 광고 컨텐츠를 선택해주세요.');
+            return;
+        }
+        if (selectedContent.CONTENTS_ID.startsWith('TEMP_')) {
+            setContents(contents.filter(c => c.CONTENTS_ID !== selectedContent.CONTENTS_ID));
+            setSelectedContent(null);
+            setFiles([]);
+            return;
+        }
+
+        if (!window.confirm('해당 광고 컨텐츠와 포함된 모든 설정 정보가 완전히 삭제됩니다. 진행하시겠습니까?')) return;
+        try {
+            setLoading(true);
+            const res = await axios.delete('/api/ad-contents', { data: { contentIds: [selectedContent.CONTENTS_ID] } });
+            if (res.data.success) {
+                alert('삭제되었습니다.');
+                setSelectedContent(null);
+                setFiles([]);
+                fetchContents();
+            }
+        } catch (err: any) {
+            console.error('Delete error:', err);
+            alert('삭제 실패: ' + (err.response?.data?.message || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const openFileModal = async () => {
+        if (!selectedContent) {
+            alert('먼저 광고 컨텐츠를 좌측에서 선택하거나 새로 추가해주세요.');
+            return;
+        }
+        try {
+            setLoading(true);
+            const res = await axios.get('/api/ad-contents/active-files');
+            if (res.data.success) {
+                setActiveFiles(res.data.files);
+                setSelectedModalFileKeys(new Set());
+                setIsModalOpen(true);
+            }
+        } catch (err) {
+            console.error('Fetch active files error:', err);
+            alert('선택할 파일 목록을 불러오지 못했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const confirmFileSelection = () => {
+        if (selectedModalFileKeys.size === 0) {
+            alert('파일을 하나 이상 선택해주세요.');
+            return;
+        }
+        
+        const filesToAdd = activeFiles.filter(f => selectedModalFileKeys.has(f.FILE_KEY));
+        const newAdContentFiles: AdContentFile[] = filesToAdd.map((f, idx) => ({
+            FILE_KEY: f.FILE_KEY,
+            FILE_NAME: f.FILE_NAME,
+            FILE_TITLE: f.FILE_TITLE,
+            USE_YN: 'Y',
+            PLAY_SEQ: files.length + idx + 1,
+            DELAY_TIME: 10,
+            EFFECT_IN: '',
+            EFFECT_OUT: '',
+            FILE_SIZE: f.FILE_SIZE,
+            FILE_MD5: f.FILE_MD5,
+            REMARK: f.REMARK || ''
+        }));
+        
+        const safeMerged = [...files];
+        newAdContentFiles.forEach(newFile => {
+            if (!safeMerged.find(existing => existing.FILE_KEY === newFile.FILE_KEY)) {
+                safeMerged.push(newFile);
+            }
+        });
+
+        setFiles(safeMerged);
+        setIsModalOpen(false);
+    };
+
+    const openVendorModal = async (target: 'filter' | 'detail') => {
+        setVendorModalTarget(target);
+        setVendorSearchKeyword('');
+        try {
+            setLoading(true);
+            const [vendorRes, codeRes] = await Promise.all([
+                axios.get('/api/vendors'),
+                axios.get('/api/basic-codes/by-name', { params: { groupNm: '거래처구분' } })
+            ]);
+            if (vendorRes.data.success && codeRes.data.success) {
+                const validCodes = codeRes.data.codes
+                    .filter((c: any) => c.CODE_NM.includes('광고주') || c.CODE_NM.includes('대행사'))
+                    .map((c: any) => c.CODE_CD);
+                
+                const filtered = vendorRes.data.vendors.filter((v: any) => {
+                    if (validCodes.length > 0) return validCodes.includes(v.VENDOR_SEC);
+                    return v.VENDOR_NM.includes('광고주') || v.VENDOR_NM.includes('대행사');
+                });
+                setVendorList(filtered);
+                setIsVendorModalOpen(true);
+            }
+        } catch(err) {
+            console.error(err);
+            alert('거래처 정보를 불러오지 못했습니다.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSelectVendor = (v: any) => {
+        if (vendorModalTarget === 'filter') {
+            setAdvertiserSearch(v.VENDOR_NM);
+        } else if (vendorModalTarget === 'detail') {
+            setSelectedContent(prev => prev ? { ...prev, ADVERTISER: v.VENDOR_NM } : null);
+        }
+        setIsVendorModalOpen(false);
+    };
+
     return (
         <div className="mgmt-container AdContentRegistrationContent" data-theme={theme}>
             {/* Toolbar */}
@@ -149,11 +299,12 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                     <div className="mgmt-btn-group">
                         <ToolbarBtn icon={<RefreshCw size={16} className={loading ? 'animate-spin' : ''} />} label="새로고침(F2)" variant="secondary" onClick={handleRefresh} />
                         <ToolbarBtn icon={<Search size={16} />} label="조회(F3)" variant="primary" onClick={fetchContents} />
+                        <ToolbarBtn icon={<Plus size={16} />} label="추가(F5)" variant="primary" onClick={handleAddContent} />
                         <ToolbarBtn icon={<FileSpreadsheet size={16} />} label="엑셀(F7)" variant="success" onClick={() => {}} />
                         <ToolbarBtn icon={<Printer size={16} />} label="출력(F6)" variant="secondary" onClick={() => window.print()} />
                         <ToolbarBtn icon={<Save size={16} />} label="저장(F4)" variant="primary" onClick={handleSave} />
                         <ToolbarBtn icon={<CloudUpload size={16} />} label="컨텐츠반영" variant="success" onClick={() => {}} />
-                        <ToolbarBtn icon={<Trash2 size={16} />} label="삭제(F8)" variant="danger" onClick={() => {}} />
+                        <ToolbarBtn icon={<Trash2 size={16} />} label="삭제(F8)" variant="danger" onClick={handleDeleteContent} />
                         <ToolbarBtn icon={<X size={16} />} label="창닫기" variant="danger" onClick={() => {}} />
                     </div>
                 </div>
@@ -180,7 +331,7 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                     <span className="mgmt-label perm-filter-label">광고주</span>
                     <div className="mgmt-btn-group">
                         <input className="mgmt-input perm-filter-search-input" placeholder="광고주 검색..." value={advertiserSearch} onChange={(e) => setAdvertiserSearch(e.target.value)} style={{ width: '150px' }} />
-                        <button className="mgmt-toolbar-btn" style={{ padding: '0 8px' }}>...</button>
+                        <button className="mgmt-toolbar-btn" style={{ padding: '0 8px' }} onClick={() => openVendorModal('filter')}>...</button>
                     </div>
                 </div>
             </div>
@@ -238,7 +389,7 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                             <span className="mgmt-label perm-filter-label" style={{ color: 'var(--mgmt-danger)' }}>광고주</span>
                             <div className="mgmt-btn-group">
                                 <input className="mgmt-input" value={selectedContent?.ADVERTISER || ''} readOnly style={{ width: '100px' }} />
-                                <button className="mgmt-toolbar-btn" style={{ padding: '0 8px' }}>...</button>
+                                <button className="mgmt-toolbar-btn" style={{ padding: '0 8px' }} onClick={() => openVendorModal('detail')}>...</button>
                             </div>
                         </div>
                         <div className="perm-filter-item">
@@ -247,7 +398,7 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                                 className="mgmt-input" 
                                 value={selectedContent?.TITLE || ''} 
                                 onChange={(e) => setSelectedContent(prev => prev ? { ...prev, TITLE: e.target.value } : null)}
-                                style={{ width: '200px' }} 
+                                style={{ width: '140px' }} 
                             />
                         </div>
                         <div className="perm-filter-item" style={{ marginLeft: 'auto' }}>
@@ -261,14 +412,34 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                         </div>
                     </div>
 
-                    <div className="arc-detail-banner">
-                        광고 컨텐츠 파일 등록 [리스트 자료를 더블 클릭 하면 다운로드 할 수 있습니다] {selectedContent && `- ${selectedContent.CONTENTS_ID}`}
+                    <div className="arc-detail-banner" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>광고 컨텐츠 파일 구성 {selectedContent && `- ${selectedContent.TITLE}`}</span>
+                        {selectedContent && (
+                            <div style={{ display: 'flex', gap: '5px' }}>
+                                <button className="mgmt-toolbar-btn mgmt-btn-primary" style={{ padding: '2px 8px', fontSize: '0.8rem', height: '24px' }} onClick={openFileModal}>
+                                    <Plus size={14} /> 등록 파일 불러오기
+                                </button>
+                                <button className="mgmt-toolbar-btn mgmt-btn-danger" style={{ padding: '2px 8px', fontSize: '0.8rem', height: '24px' }} onClick={() => {
+                                    if (selectedRows.size === 0) { alert('제외할 항목을 체크해주세요.'); return; }
+                                    setFiles(prev => prev.filter(f => !selectedRows.has(f.FILE_KEY)));
+                                    setSelectedRows(new Set());
+                                }}>
+                                    <Trash2 size={14} /> 리스트 제외
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="mgmt-table-wrapper">
                         <table className="mgmt-table" style={{ minWidth: '1200px' }}>
                             <thead>
                                 <tr>
+                                    <th className="cfm-col-check">
+                                        <input type="checkbox" onChange={(e) => {
+                                            if (e.target.checked) setSelectedRows(new Set(files.map(f => f.FILE_KEY)));
+                                            else setSelectedRows(new Set());
+                                        }} />
+                                    </th>
                                     <th style={{ width: '40px' }}>NO</th>
                                     <th style={{ width: '100px' }}>파일명</th>
                                     <th style={{ width: '200px' }}>파일제목</th>
@@ -284,7 +455,15 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                             </thead>
                             <tbody>
                                 {files.map((f, idx) => (
-                                    <tr key={f.FILE_KEY}>
+                                    <tr key={f.FILE_KEY} className={selectedRows.has(f.FILE_KEY) ? 'selected' : ''}>
+                                        <td className="cfm-col-check">
+                                            <input type="checkbox" checked={selectedRows.has(f.FILE_KEY)} onChange={() => {
+                                                const next = new Set(selectedRows);
+                                                if (next.has(f.FILE_KEY)) next.delete(f.FILE_KEY);
+                                                else next.add(f.FILE_KEY);
+                                                setSelectedRows(next);
+                                            }} />
+                                        </td>
                                         <td className="text-center">{idx + 1}</td>
                                         <td>
                                             <input 
@@ -360,6 +539,96 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                     </div>
                 </div>
             </div>
+
+            {/* File Selection Modal */}
+            {isModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div className="mgmt-card" style={{ width: '800px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', backgroundColor: theme === 'dark' ? '#1e1e2d' : '#ffffff', boxShadow: '0px 10px 40px rgba(0,0,0,0.5)' }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--mgmt-glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>사용 가능한 원본 파일 선택</h3>
+                            <button className="mgmt-toolbar-btn" onClick={() => setIsModalOpen(false)}><X size={16} /></button>
+                        </div>
+                        <div style={{ flex: 1, padding: '1rem', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                            <div className="mgmt-table-wrapper" style={{ flex: 1 }}>
+                                <table className="mgmt-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '40px' }} className="text-center">
+                                                <input type="checkbox" onChange={(e) => {
+                                                    if (e.target.checked) setSelectedModalFileKeys(new Set(activeFiles.map(f => f.FILE_KEY)));
+                                                    else setSelectedModalFileKeys(new Set());
+                                                }} />
+                                            </th>
+                                            <th style={{ width: '200px' }}>파일명</th>
+                                            <th>파일제목</th>
+                                            <th style={{ width: '100px' }}>파일사이즈</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {activeFiles.map(f => (
+                                            <tr key={f.FILE_KEY} onClick={() => {
+                                                const next = new Set(selectedModalFileKeys);
+                                                if (next.has(f.FILE_KEY)) next.delete(f.FILE_KEY);
+                                                else next.add(f.FILE_KEY);
+                                                setSelectedModalFileKeys(next);
+                                            }} className={selectedModalFileKeys.has(f.FILE_KEY) ? 'selected' : ''} style={{ cursor: 'pointer' }}>
+                                                <td className="text-center">
+                                                    <input type="checkbox" checked={selectedModalFileKeys.has(f.FILE_KEY)} readOnly />
+                                                </td>
+                                                <td><div className="ellipsis-cell" style={{ maxWidth: '200px' }}>{f.FILE_NAME}</div></td>
+                                                <td><div className="ellipsis-cell" style={{ maxWidth: '300px' }}>{f.FILE_TITLE}</div></td>
+                                                <td className="text-right">{formatSize(f.FILE_SIZE)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div style={{ padding: '1rem', borderTop: '1px solid var(--mgmt-glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                            <button className="mgmt-toolbar-btn mgmt-btn-secondary" onClick={() => setIsModalOpen(false)}>취소</button>
+                            <button className="mgmt-toolbar-btn mgmt-btn-primary" onClick={confirmFileSelection}>적용하기</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Vendor Selection Modal */}
+            {isVendorModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div className="mgmt-card" style={{ width: '500px', maxHeight: '70vh', display: 'flex', flexDirection: 'column', backgroundColor: theme === 'dark' ? '#1e1e2d' : '#ffffff', boxShadow: '0px 10px 40px rgba(0,0,0,0.5)' }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--mgmt-glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>광고주/대행사 선택</h3>
+                            <button className="mgmt-toolbar-btn" onClick={() => setIsVendorModalOpen(false)}><X size={16} /></button>
+                        </div>
+                        <div style={{ padding: '0.5rem 1rem', display: 'flex', gap: '5px' }}>
+                            <input className="mgmt-input" placeholder="거래처명 또는 코드 검색..." value={vendorSearchKeyword} onChange={e => setVendorSearchKeyword(e.target.value)} style={{ flex: 1 }} />
+                        </div>
+                        <div style={{ flex: 1, padding: '0 1rem 1rem 1rem', overflowY: 'auto' }}>
+                            <div className="mgmt-table-wrapper">
+                                <table className="mgmt-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '100px' }}>거래처코드</th>
+                                            <th>거래처명</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {vendorList.filter(v => (v.VENDOR_NM || '').includes(vendorSearchKeyword) || (v.VENDOR_CD || '').includes(vendorSearchKeyword)).map(v => (
+                                            <tr key={v.VENDOR_CD} onClick={() => handleSelectVendor(v)} style={{ cursor: 'pointer' }} className="hover-highlight">
+                                                <td className="text-center">{v.VENDOR_CD}</td>
+                                                <td>{v.VENDOR_NM}</td>
+                                            </tr>
+                                        ))}
+                                        {vendorList.length === 0 && (
+                                            <tr><td colSpan={2} className="text-center" style={{ padding: '20px' }}>검색된 거래처가 없습니다.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

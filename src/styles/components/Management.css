@@ -292,7 +292,7 @@
   max-height: calc(100vh - 320px);
   overflow: auto !important;
   width: 100%;
-  max-width: 1150px;
+  max-width: 100%;
 }
 
 .mgmt-table {

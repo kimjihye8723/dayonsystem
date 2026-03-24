@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, CloudUpload, FileVideo } from 'lucide-react';
+import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, CloudUpload, FileVideo, Plus } from 'lucide-react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import '../../styles/partials/ContentsFileManagementContent.css';
@@ -127,6 +127,32 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
         }
     };
 
+    const handleAddRow = () => {
+        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const newFile: ContentsFile = {
+            CORP_CD: '25001',
+            REG_DT: today,
+            FILE_KEY: `TEMP_${Date.now()}`,
+            FILE_NAME: '',
+            FILE_TITLE: '',
+            FTP_FILENAME: '',
+            FILE_MD5: '',
+            FILE_SIZE: 0,
+            FILE_TYP: '1',
+            USE_YN: 'Y',
+            REMARK: '',
+            ASPECTRATIO_YN: 'N',
+            SCREEN_WIDTH: 256,
+            SCREEN_HEIGHT: 256,
+            TEMP_USEYN: 'N',
+        };
+        setFiles(prev => [newFile, ...prev]);
+        setEditingFiles(prev => ({
+            ...prev,
+            [newFile.FILE_KEY]: newFile
+        }));
+    };
+
     const handleExcelDownload = () => {
         const headers = ['파일명', '스크린넓이', '스크린높이', '파일제목', '파일사이즈', 'MD5', '사용유무'];
         const data = files.map(f => [
@@ -149,6 +175,67 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
 
     const getEditValue = (file: ContentsFile, field: keyof ContentsFile) => {
         return editingFiles[file.FILE_KEY] ? (editingFiles[file.FILE_KEY] as any)[field] : file[field];
+    };
+
+    const handleFileSelect = async (fileObj: ContentsFile, e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            updateEditingFile(fileObj, 'FILE_NAME', file.name);
+            updateEditingFile(fileObj, 'FILE_TITLE', file.name.replace(/\.[^/.]+$/, ""));
+            updateEditingFile(fileObj, 'FILE_SIZE', file.size);
+            updateEditingFile(fileObj, 'FILE_MD5', '업로드 중...');
+
+            // TODO: 파일업로드 작업 미완 - 웹게시 환경 확정 시 수정 필요
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                const res = await axios.post('/api/contents-files/upload', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                if (res.data.success) {
+                    updateEditingFile(fileObj, 'FILE_MD5', res.data.md5);
+                    updateEditingFile(fileObj, 'FTP_FILENAME', res.data.filename);
+                } else {
+                    alert('파일 업로드 실패: ' + res.data.message);
+                    updateEditingFile(fileObj, 'FILE_MD5', 'UPLOAD_FAILED');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('파일 업로드를 처리하는 중 오류가 발생했습니다.');
+                updateEditingFile(fileObj, 'FILE_MD5', 'UPLOAD_FAILED');
+            }
+        }
+    };
+
+    const handleDownload = async (f: ContentsFile) => {
+        if (!f.FTP_FILENAME) {
+            alert('저장된 파일(FTP_FILENAME) 정보가 없습니다.');
+            return;
+        }
+        try {
+            const res = await axios.get(`/api/contents-files/download?filename=${encodeURIComponent(f.FTP_FILENAME)}`, {
+                responseType: 'blob'
+            });
+            
+            if (res.data.type === 'application/json') {
+                const text = await res.data.text();
+                const data = JSON.parse(text);
+                alert(data.message || '파일을 찾을 수 없습니다.');
+                return;
+            }
+
+            const url = window.URL.createObjectURL(new Blob([res.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', f.FILE_NAME || f.FTP_FILENAME);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (err: any) {
+            console.error(err);
+            alert('해당 경로에서 파일을 찾을 수 없습니다.');
+        }
     };
 
     const formatDate = (str: string) => {
@@ -179,6 +266,7 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                     <div className="mgmt-btn-group">
                         <ToolbarBtn icon={<RefreshCw size={16} className={loading ? 'animate-spin' : ''} />} label="새로고침(F2)" variant="secondary" onClick={handleRefresh} />
                         <ToolbarBtn icon={<Search size={16} />} label="조회(F3)" variant="primary" onClick={() => fetchFiles()} />
+                        <ToolbarBtn icon={<Plus size={16} />} label="추가(F5)" variant="primary" onClick={handleAddRow} />
                         <ToolbarBtn icon={<FileSpreadsheet size={16} />} label="엑셀(F7)" variant="success" onClick={handleExcelDownload} />
                         <ToolbarBtn icon={<Printer size={16} />} label="출력(F6)" variant="secondary" onClick={() => window.print()} />
                         <ToolbarBtn icon={<Save size={16} />} label="저장(F4)" variant="primary" onClick={handleSave} />
@@ -233,7 +321,11 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                             <tbody>
                                 {dates.map(d => (
                                     <tr key={d.REG_DT} 
-                                        onClick={() => setSelectedDate(d.REG_DT)}
+                                        onClick={() => {
+                                            const newDate = selectedDate === d.REG_DT ? null : d.REG_DT;
+                                            setSelectedDate(newDate);
+                                            fetchFiles(newDate);
+                                        }}
                                         className={selectedDate === d.REG_DT ? 'selected' : ''}
                                     >
                                         <td className="cfm-cell-center">{formatDate(d.REG_DT)}</td>
@@ -275,7 +367,11 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                             </thead>
                             <tbody>
                                 {files.map((f, idx) => (
-                                    <tr key={f.FILE_KEY} className={selectedRows.has(f.FILE_KEY) ? 'selected' : ''}>
+                                    <tr 
+                                        key={f.FILE_KEY} 
+                                        className={selectedRows.has(f.FILE_KEY) ? 'selected' : ''}
+                                        onDoubleClick={() => handleDownload(f)}
+                                    >
                                         <td className="cfm-col-check">
                                             <input type="checkbox" checked={selectedRows.has(f.FILE_KEY)} onChange={() => {
                                                 const next = new Set(selectedRows);
@@ -285,8 +381,37 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                                             }} />
                                         </td>
                                         <td className="cfm-col-no">{idx + 1}</td>
-                                        <td className="cfm-col-filename">
-                                            <input className="cfm-table-input" value={getEditValue(f, 'FILE_NAME')} onChange={(e) => updateEditingFile(f, 'FILE_NAME', e.target.value)} />
+                                        <td className="cfm-col-filename" 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (e.detail === 1) {
+                                                    // @ts-ignore
+                                                    window.cfmClickTimeout = setTimeout(() => {
+                                                        const el = document.getElementById(`file-input-${f.FILE_KEY}`);
+                                                        if (el) el.click();
+                                                    }, 250);
+                                                } else if (e.detail === 2) {
+                                                    // @ts-ignore
+                                                    clearTimeout(window.cfmClickTimeout);
+                                                    handleDownload(f);
+                                                }
+                                            }}
+                                            title="클릭: 파일업로드 / 더블클릭: 다운로드"
+                                        >
+                                            <input 
+                                                id={`file-input-${f.FILE_KEY}`}
+                                                type="file" 
+                                                accept="image/*,video/*"
+                                                style={{ display: 'none' }}
+                                                onChange={(e) => handleFileSelect(f, e)}
+                                            />
+                                            <input 
+                                                className="cfm-table-input" 
+                                                value={getEditValue(f, 'FILE_NAME') || ''} 
+                                                readOnly 
+                                                placeholder="클릭: 파일선택 / 더블클릭: 다운로드" 
+                                                style={{ cursor: 'pointer', pointerEvents: 'none' }} 
+                                            />
                                         </td>
                                         <td className="cfm-col-dim">
                                             <input className="cfm-table-input cfm-cell-center" type="number" value={getEditValue(f, 'SCREEN_WIDTH') || ''} onChange={(e) => updateEditingFile(f, 'SCREEN_WIDTH', parseInt(e.target.value))} />
