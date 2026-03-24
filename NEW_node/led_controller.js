@@ -36,9 +36,8 @@ const DB_CONFIG = {
 };
 
 const CORP_CD = '25001';
-// 파일 서빙 경로 (로컬 테스트)
-const FILE_BASE_PATH = process.env.FILE_PATH || 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
-// const FILE_BASE_PATH = 'D:\\dayon_file'; // 운영 환경
+// 파일 서빙 경로 (운영 환경)
+const FILE_BASE_PATH = process.env.FILE_PATH || 'D:\\dayon_file';
 
 const FILE_SERVER_PORT = parseInt(process.env.FILE_SERVER_PORT || '9090', 10);
 const SCHEDULE_POLL_INTERVAL = 60000;   // 1분마다 스케줄 체크
