@@ -44,12 +44,12 @@ router.post('/contents-files/save', (req, res) => {
         db.query(checkSql, [corpCd, f.FILE_KEY], (err, results) => {
             if (err) { errors.push(err.message); if (++completed === files.length) finalize(); return; }
             if (results.length > 0) {
-                const sql = `UPDATE TCM_CONTENTS_FILE SET REG_DT = ?, FILE_NAME = ?, FILE_TITLE = ?, FTP_FILENAME = ?, FILE_MD5 = ?, FILE_SIZE = ?, FILE_TYP = ?, USE_YN = ?, REMARK = ?, ASPECTRATIO_YN = ?, SCREEN_WIDTH = ?, SCREEN_HEIGHT = ?, TEMP_USEYN = ?, MODIFYDT = NOW(), MODIFYUSER = 'ADMIN' WHERE CORP_CD = ? AND FILE_KEY = ?`;
-                const params = [f.REG_DT, f.FILE_NAME, f.FILE_TITLE, f.FTP_FILENAME, f.FILE_MD5, f.FILE_SIZE, f.FILE_TYP, f.USE_YN || 'Y', f.REMARK, f.ASPECTRATIO_YN || 'N', f.SCREEN_WIDTH, f.SCREEN_HEIGHT, f.TEMP_USEYN || 'N', corpCd, f.FILE_KEY];
+                const sql = `UPDATE TCM_CONTENTS_FILE SET REG_DT = ?, FILE_NAME = ?, FILE_TITLE = ?, FTP_FILENAME = ?, FILE_MD5 = ?, FILE_SIZE = ?, FILE_TYP = ?, USE_YN = ?, REMARK = ?, ASPECTRATIO_YN = ?, SCREEN_WIDTH = ?, SCREEN_HEIGHT = ?, TEMP_USEYN = ?, GENDER = ?, MODIFYDT = NOW(), MODIFYUSER = 'ADMIN' WHERE CORP_CD = ? AND FILE_KEY = ?`;
+                const params = [f.REG_DT, f.FILE_NAME, f.FILE_TITLE, f.FTP_FILENAME, f.FILE_MD5, f.FILE_SIZE, f.FILE_TYP, f.USE_YN || 'Y', f.REMARK, f.ASPECTRATIO_YN || 'N', f.SCREEN_WIDTH, f.SCREEN_HEIGHT, f.TEMP_USEYN || 'N', f.GENDER || null, corpCd, f.FILE_KEY];
                 db.query(sql, params, (e) => { if (e) errors.push(e.message); if (++completed === files.length) finalize(); });
             } else {
-                const sql = `INSERT INTO TCM_CONTENTS_FILE (CORP_CD, REG_DT, FILE_KEY, FILE_NAME, FILE_TITLE, FTP_FILENAME, FILE_MD5, FILE_SIZE, FILE_TYP, USE_YN, REMARK, REGISTDT, REGISTUSER, ASPECTRATIO_YN, SCREEN_WIDTH, SCREEN_HEIGHT, TEMP_USEYN) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'ADMIN', ?, ?, ?, ?)`;
-                const params = [corpCd, f.REG_DT, f.FILE_KEY, f.FILE_NAME, f.FILE_TITLE, f.FTP_FILENAME, f.FILE_MD5, f.FILE_SIZE, f.FILE_TYP, f.USE_YN || 'Y', f.REMARK, f.ASPECTRATIO_YN || 'N', f.SCREEN_WIDTH, f.SCREEN_HEIGHT, f.TEMP_USEYN || 'N'];
+                const sql = `INSERT INTO TCM_CONTENTS_FILE (CORP_CD, REG_DT, FILE_KEY, FILE_NAME, FILE_TITLE, FTP_FILENAME, FILE_MD5, FILE_SIZE, FILE_TYP, USE_YN, REMARK, REGISTDT, REGISTUSER, ASPECTRATIO_YN, SCREEN_WIDTH, SCREEN_HEIGHT, TEMP_USEYN, GENDER) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'ADMIN', ?, ?, ?, ?, ?)`;
+                const params = [corpCd, f.REG_DT, f.FILE_KEY, f.FILE_NAME, f.FILE_TITLE, f.FTP_FILENAME, f.FILE_MD5, f.FILE_SIZE, f.FILE_TYP, f.USE_YN || 'Y', f.REMARK, f.ASPECTRATIO_YN || 'N', f.SCREEN_WIDTH, f.SCREEN_HEIGHT, f.TEMP_USEYN || 'N', f.GENDER || null];
                 db.query(sql, params, (e) => { if (e) errors.push(e.message); if (++completed === files.length) finalize(); });
             }
         });
@@ -187,9 +187,9 @@ router.delete('/ad-contents', (req, res) => {
     });
 });
 
-// 파일업로드 작업 - 웹게시 환경 확정: D:\dayon_file
-const uploadDir = 'D:\\dayon_file'; 
-// const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
+// 파일업로드 작업 - 웹게시 환경 확정: D:\dayon_file (상설 대기)
+// const uploadDir = 'D:\\dayon_file'; 
+const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -228,8 +228,8 @@ router.get('/contents-files/download', (req, res) => {
     const { filename } = req.query;
     if (!filename) return res.status(400).send('파일명이 필요합니다.');
 
-    const uploadDir = 'D:\\dayon_file'; 
-    // const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
+    // const uploadDir = 'D:\\dayon_file'; 
+    const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
     const filePath = path.join(uploadDir, filename);
 
     if (fs.existsSync(filePath)) {

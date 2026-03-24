@@ -14,6 +14,7 @@ interface Device {
     USE_VENDOR_NM?: string; // 현재사용점포명 (JOIN)
     USE_YN: string;         // 사용가능여부 Y/N
     REMARK?: string;        // 비고
+    CONNECT_INFO?: string;  // 연결정보
     REGISTDT?: string;      // 등록일시
     isNew?: boolean;        // 신규 행 여부
 }
@@ -77,7 +78,7 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
 
     // Excel Download (Styled like the image)
     const handleDownloadTemplate = () => {
-        const headers = ['장비ID', '입고일자', '사용일자', '폐기일자', '현재사용점포', '사용가능여부', '비고'];
+        const headers = ['장비ID', '입고일자', '사용일자', '폐기일자', '현재사용점포', '사용가능여부', '연결정보', '비고'];
 
         // 데이터 변환 (True/False 형식 포함)
         const excelData = devices.map(d => [
@@ -87,6 +88,7 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
             d.DISPOSE_DT ? `${d.DISPOSE_DT.slice(0, 4)}-${d.DISPOSE_DT.slice(4, 6)}-${d.DISPOSE_DT.slice(6, 8)}` : '',
             d.USE_VENDOR || '',
             d.USE_YN === 'Y' ? 'True' : 'False',
+            d.CONNECT_INFO || '',
             d.REMARK || ''
         ]);
 
@@ -149,6 +151,7 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
             { wch: 15 }, // 폐기일자
             { wch: 20 }, // 현재사용점포
             { wch: 15 }, // 사용가능여부
+            { wch: 25 }, // 연결정보
             { wch: 30 }  // 비고
         ];
 
@@ -245,6 +248,7 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
             USE_VENDOR: '',
             USE_YN: 'Y',
             REMARK: '',
+            CONNECT_INFO: '',
             isNew: true
         };
         setDevices([newDevice, ...devices]);
@@ -407,6 +411,7 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
                                 <th className="dm-table-col-date">폐기일자</th>
                                 <th className="dm-table-col-vendor">현재사용점포</th>
                                 <th className="dm-table-col-status">사용가능여부</th>
+                                <th className="dm-table-col-connect">연결정보</th>
                                 <th className="dm-table-col-remark">비고</th>
                                 <th className="dm-table-col-regdt">작성일자</th>
                             </tr>
@@ -458,6 +463,12 @@ const DeviceManagementContent: React.FC<Props> = ({ theme }) => {
                                         <input type="checkbox"
                                             checked={d.USE_YN === 'Y'}
                                             onChange={(e) => handleCellChange(index, 'USE_YN', e.target.checked ? 'Y' : 'N')} />
+                                    </td>
+                                    <td>
+                                        <input className="mgmt-input dm-table-input"
+                                            value={d.CONNECT_INFO || ''}
+                                            onChange={(e) => handleCellChange(index, 'CONNECT_INFO', e.target.value)}
+                                            placeholder="연결정보" />
                                     </td>
                                     <td>
                                         <input className="mgmt-input dm-table-input"

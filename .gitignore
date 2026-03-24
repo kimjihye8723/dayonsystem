@@ -1,28 +1,21 @@
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+node_modules/
+dist/
 .env
-.env.local
-.env.*.local
-.gemini/
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+*.log
+.gitlog.txt
+tmp_*
+test_*
+api_result.json
+found.txt
+find-links.js
+find-links.cjs
+tmp_check_corpvnd.cjs
+tmp_get_cctv.cjs
+tmp_get_cctv.js
+NEW_node/tmp_query.js
+NEW_node/test_cctv.js
+api_result.json
+found.txt
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+Thumbs.db

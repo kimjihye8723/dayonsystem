@@ -111,6 +111,7 @@
 .cfm-col-size { width: 100px; text-align: right; }
 .cfm-col-md5 { width: 200px; }
 .cfm-col-yn { width: 70px; text-align: center; }
+.cfm-col-gender { width: 90px; text-align: center; }
 .cfm-col-remark { width: 150px; }
 
 .cfm-table-input {

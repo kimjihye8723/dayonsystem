@@ -26,6 +26,7 @@ interface ContentsFile {
     SCREEN_WIDTH: number | null;
     SCREEN_HEIGHT: number | null;
     TEMP_USEYN: string;
+    GENDER: string | null;
 }
 
 interface Props {
@@ -145,6 +146,7 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
             SCREEN_WIDTH: 256,
             SCREEN_HEIGHT: 256,
             TEMP_USEYN: 'N',
+            GENDER: null,
         };
         setFiles(prev => [newFile, ...prev]);
         setEditingFiles(prev => ({
@@ -154,10 +156,10 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
     };
 
     const handleExcelDownload = () => {
-        const headers = ['파일명', '스크린넓이', '스크린높이', '파일제목', '파일사이즈', 'MD5', '사용유무'];
+        const headers = ['파일명', '스크린넓이', '스크린높이', '파일제목', '파일사이즈', 'MD5', '성별', '사용유무'];
         const data = files.map(f => [
             f.FILE_NAME, f.SCREEN_WIDTH, f.SCREEN_HEIGHT, f.FILE_TITLE,
-            f.FILE_SIZE, f.FILE_MD5, f.USE_YN
+            f.FILE_SIZE, f.FILE_MD5, f.GENDER === 'M' ? '남자' : f.GENDER === 'F' ? '여자' : '없음', f.USE_YN
         ]);
 
         const wb = XLSX.utils.book_new();
@@ -185,7 +187,7 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
             updateEditingFile(fileObj, 'FILE_SIZE', file.size);
             updateEditingFile(fileObj, 'FILE_MD5', '업로드 중...');
 
-            // 파일업로드 작업 - 웹게시 환경 확정: D:\dayon_file 사용중
+            // 파일업로드 작업 - 로컬 테스트 경로 사용중 (운영 경로 D:\dayon_file 상설 대기)
             const formData = new FormData();
             formData.append('file', file);
             try {
@@ -360,6 +362,7 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                                     <th className="cfm-col-title">파일제목</th>
                                     <th className="cfm-col-size">파일사이즈</th>
                                     <th className="cfm-col-md5">파일MD5</th>
+                                    <th className="cfm-col-gender">성별</th>
                                     <th className="cfm-col-yn">사용유무</th>
                                     <th className="cfm-col-yn">종횡비유지</th>
                                     <th className="cfm-col-remark">비고</th>
@@ -424,6 +427,13 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                                         </td>
                                         <td className="cfm-col-size">{formatSize(f.FILE_SIZE)}</td>
                                         <td className="cfm-col-md5">{f.FILE_MD5}</td>
+                                        <td className="cfm-col-gender">
+                                            <select className="cfm-table-input" value={getEditValue(f, 'GENDER') || ''} onChange={(e) => updateEditingFile(f, 'GENDER', e.target.value || null)}>
+                                                <option value="">없음</option>
+                                                <option value="M">남자</option>
+                                                <option value="F">여자</option>
+                                            </select>
+                                        </td>
                                         <td className="cfm-col-yn">
                                             <input type="checkbox" checked={getEditValue(f, 'USE_YN') === 'Y'} onChange={(e) => updateEditingFile(f, 'USE_YN', e.target.checked ? 'Y' : 'N')} />
                                         </td>
@@ -436,7 +446,7 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                                     </tr>
                                 ))}
                                 {files.length === 0 && !loading && (
-                                    <tr><td colSpan={11} style={{ textAlign: 'center', padding: '100px', color: 'var(--text-muted)' }}>가져올 데이터가 없습니다.</td></tr>
+                                    <tr><td colSpan={12} style={{ textAlign: 'center', padding: '100px', color: 'var(--text-muted)' }}>가져올 데이터가 없습니다.</td></tr>
                                 )}
                             </tbody>
                         </table>

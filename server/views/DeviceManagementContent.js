@@ -63,16 +63,16 @@ router.post('/devices/save', (req, res) => {
             }
 
             if (results && results.length > 0) {
-                const sql = `UPDATE TCM_DEVICEINFO SET INPUT_DT=?, OUTPUT_DT=?, DISPOSE_DT=?, USE_VENDOR=?, USE_YN=?, REMARK=?, MODIFYDT=NOW(), MODIFYUSER='ADMIN'
+                const sql = `UPDATE TCM_DEVICEINFO SET INPUT_DT=?, OUTPUT_DT=?, DISPOSE_DT=?, USE_VENDOR=?, USE_YN=?, REMARK=?, CONNECT_INFO=?, MODIFYDT=NOW(), MODIFYUSER='ADMIN'
                              WHERE CORP_CD='25001' AND DEVICE_ID=?`;
-                db.query(sql, [d.INPUT_DT || '', d.OUTPUT_DT || '', d.DISPOSE_DT || '', d.USE_VENDOR || '', d.USE_YN, d.REMARK || '', d.DEVICE_ID], (e) => {
+                db.query(sql, [d.INPUT_DT || '', d.OUTPUT_DT || '', d.DISPOSE_DT || '', d.USE_VENDOR || '', d.USE_YN, d.REMARK || '', d.CONNECT_INFO || '', d.DEVICE_ID], (e) => {
                     if (e) errors.push(e.message);
                     if (++completed === devices.length) finalize();
                 });
             } else {
-                const sql = `INSERT INTO TCM_DEVICEINFO (CORP_CD, DEVICE_ID, INPUT_DT, OUTPUT_DT, DISPOSE_DT, USE_VENDOR, USE_YN, REMARK, REGISTDT, REGISTUSER)
-                             VALUES ('25001', ?, ?, ?, ?, ?, ?, ?, NOW(), 'ADMIN')`;
-                db.query(sql, [d.DEVICE_ID, d.INPUT_DT || '', d.OUTPUT_DT || '', d.DISPOSE_DT || '', d.USE_VENDOR || '', d.USE_YN || 'Y', d.REMARK || ''], (e) => {
+                const sql = `INSERT INTO TCM_DEVICEINFO (CORP_CD, DEVICE_ID, INPUT_DT, OUTPUT_DT, DISPOSE_DT, USE_VENDOR, USE_YN, REMARK, CONNECT_INFO, REGISTDT, REGISTUSER)
+                             VALUES ('25001', ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'ADMIN')`;
+                db.query(sql, [d.DEVICE_ID, d.INPUT_DT || '', d.OUTPUT_DT || '', d.DISPOSE_DT || '', d.USE_VENDOR || '', d.USE_YN || 'Y', d.REMARK || '', d.CONNECT_INFO || ''], (e) => {
                     if (e) errors.push(e.message);
                     if (++completed === devices.length) finalize();
                 });

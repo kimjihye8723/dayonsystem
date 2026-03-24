@@ -1,14 +1,16 @@
 {
-  "name": "dayon-cctv-sensor-node",
+  "name": "dayon-led-controller",
   "version": "1.0.0",
-  "description": "CCTV Sensor Data Collection Node - DB-driven dynamic CCTV list",
-  "main": "cctv-sensor.js",
+  "description": "LED Display Controller - Schedule-based content delivery with CCTV gender filtering",
+  "main": "led_controller.js",
   "scripts": {
-    "start": "node cctv-sensor.js"
+    "start": "node led_controller.js",
+    "cctv": "node cctv-sensor.js"
   },
   "dependencies": {
     "axios": "^1.7.0",
     "dotenv": "^16.4.0",
+    "express": "^5.1.0",
     "mysql2": "^3.17.0"
   }
 }
