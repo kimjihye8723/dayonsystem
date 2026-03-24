@@ -26,6 +26,8 @@ import storeStatusRouter from './views/StoreStatusContent.js';
 import adPlayLogRouter from './views/AdPlayLogContent.js';
 import contentAggRouter from './views/ContentAggContent.js';
 import bleLogAggRouter from './views/BleLogAggContent.js';
+import realTimeStatusRouter from './views/RealTimeStatusContent.js';
+import cctvMgmtRouter from './views/CCTVManagementContent.js';
 
 const app = express();
 const PORT = process.env.PORT || 9100;
@@ -54,6 +56,8 @@ app.use('/api', storeStatusRouter);
 app.use('/api', adPlayLogRouter);
 app.use('/api', contentAggRouter);
 app.use('/api', bleLogAggRouter);
+app.use('/api', realTimeStatusRouter);
+app.use('/api', cctvMgmtRouter);
 
 // Root route for health check
 app.get('/', (req, res) => {

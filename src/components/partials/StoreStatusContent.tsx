@@ -42,23 +42,18 @@ const StoreStatusContent: React.FC<Props> = ({ theme, onClose }) => {
     const fetchStatus = useCallback(async () => {
         try {
             setLoading(true);
-            const params = {
-                vendorNm: searchVendor,
-                area1: area1 === 'ALL' ? '' : area1,
-                area2: area2 === 'ALL' ? '' : area2,
-                area3: area3 === 'ALL' ? '' : area3,
-                status: statusFilter === 'ALL' ? '' : statusFilter
-            };
-            const res = await axios.get('/api/store-status', { params });
+            const res = await axios.get('/api/store-status', {
+                params: { vendorNm: searchVendor }
+            });
             if (res.data.success) {
-                setStatusList(res.data.statusList);
+                setStatusList(res.data.status);
             }
         } catch (err) {
             console.error('Fetch store status error:', err);
         } finally {
             setLoading(false);
         }
-    }, [searchVendor, area1, area2, area3, statusFilter]);
+    }, [searchVendor]);
 
     useEffect(() => {
         fetchStatus();

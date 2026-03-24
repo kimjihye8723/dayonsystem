@@ -185,7 +185,7 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
             updateEditingFile(fileObj, 'FILE_SIZE', file.size);
             updateEditingFile(fileObj, 'FILE_MD5', '업로드 중...');
 
-            // TODO: 파일업로드 작업 미완 - 웹게시 환경 확정 시 수정 필요
+            // 파일업로드 작업 - 웹게시 환경 확정: D:\dayon_file 사용중
             const formData = new FormData();
             formData.append('file', file);
             try {

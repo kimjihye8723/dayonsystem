@@ -3,7 +3,7 @@ import {
     Users, User, LogOut, X, Activity, Database, ClipboardList,
     FileSpreadsheet, Landmark, ShieldCheck, BarChart2, BarChart3,
     Monitor, FileVideo, Calendar, CalendarDays, History as HistoryIcon,
-    ChevronDown, ChevronRight
+    ChevronDown, ChevronRight, LayoutDashboard, Video
 } from 'lucide-react';
 import logoDark from '../assets/joot_ams_w.png';
 import logoLight from '../assets/joot_ams_b.png';
@@ -40,7 +40,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     // Auto-expand section containing activeTabId
     React.useEffect(() => {
         const groups: { [key: string]: string[] } = {
-            'basic': ['basiccode', 'boardmgmt', 'devicemgmt', 'monthlyplan'],
+            'basic': ['basiccode', 'boardmgmt', 'devicemgmt', 'cctvmgmt', 'monthlyplan'],
             'user': ['usermgmt', 'userperm', 'userstatus', 'logininfo'],
             'ad_info': ['vendormgmt', 'contentsfile', 'vendorstatus'],
             'ad_mgmt': ['adcontents', 'adschedule', 'todayapplied', 'storestatus'],
@@ -96,6 +96,29 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </button>
             </div>
             <nav className="sidebar-nav">
+                <div style={{ paddingBottom: '1rem' }}>
+                    <NavItem id="today" icon={<BarChart3 size={18} />} label="투데이" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="realtime" icon={<Activity size={18} />} label="실시간 현황" activeId={activeTabId} onClick={onTabSelect} />
+                    <a
+                        href="http://www.godata.co.kr:90/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="nav-item"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                    >
+                        <LayoutDashboard size={18} /> 대시보드
+                    </a>
+                    <a
+                        href="http://smartgate1001.cns-link.net:7002"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="nav-item"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                    >
+                        <LayoutDashboard size={18} /> 피플카운팅
+                    </a>
+                </div>
+
                 <div className="nav-category" onClick={() => toggleSection('common')}>
                     공통업무 {renderChevron('common')}
                 </div>
@@ -110,6 +133,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     <NavItem id="basiccode" icon={<Database size={18} />} label="기초코드 관리" activeId={activeTabId} onClick={onTabSelect} />
                                     <NavItem id="boardmgmt" icon={<ClipboardList size={18} />} label="게시판 관리" activeId={activeTabId} onClick={onTabSelect} />
                                     <NavItem id="devicemgmt" icon={<FileSpreadsheet size={18} />} label="장비관리" activeId={activeTabId} onClick={onTabSelect} />
+                                    <NavItem id="cctvmgmt" icon={<Video size={18} />} label="CCTV 관리" activeId={activeTabId} onClick={onTabSelect} />
                                     <NavItem id="monthlyplan" icon={<Calendar size={18} />} label="월간 계획표 작성" activeId={activeTabId} onClick={onTabSelect} />
                                 </>
                             )}

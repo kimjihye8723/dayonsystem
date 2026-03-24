@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
     RefreshCw, Search, FileSpreadsheet, Printer, Trash2, X,
-    Calendar, Save, FileCheck
+    Calendar, Save, FileCheck, Plus
 } from 'lucide-react';
 import '../../styles/partials/AdScheduleSettingContent.css';
 
@@ -62,6 +62,7 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
     const [scheduleTemplates, setScheduleTemplates] = useState<any[]>([]);
     const [selectedTemplateKey, setSelectedTemplateKey] = useState('');
     const [loading, setLoading] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
     const [gridData, setGridData] = useState<GridRow[]>(
         DAYS.map(day => {
             const row: any = { DAY_SEC: day.id, DAY_NM: day.name };
@@ -78,6 +79,7 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
     });
     const [searchEndDate, setSearchEndDate] = useState(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
     const [searchVendorTerm, setSearchVendorTerm] = useState('');
+    const [detailVendorSearch, setDetailVendorSearch] = useState('');
 
     const fetchSchedules = useCallback(async () => {
         try {
@@ -135,6 +137,18 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
         fetchTemplates();
     }, [fetchVendors, fetchContents, fetchTemplates]);
 
+    const handleNew = () => {
+        setIsCreating(true);
+        setSelectedSchedule(null);
+        setSelectedVendorCodes([]);
+        setDisplayedVendors(vendors); // Show all vendors for a new schedule
+        setGridData(DAYS.map(day => {
+            const row: any = { DAY_SEC: day.id, DAY_NM: day.name };
+            HOURS.forEach(h => row[`SCH_${h}`] = '');
+            return row;
+        }));
+    };
+
     const handleSave = async () => {
         if (selectedVendorCodes.length === 0) {
             alert('대상 점포를 최소 하나 이상 선택해야 합니다.');
@@ -149,6 +163,7 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
             });
             if (res.data.success) {
                 alert('스케쥴이 저장되었습니다.');
+                setIsCreating(false);
                 fetchSchedules();
             }
         } catch (e) {
@@ -160,7 +175,10 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'F2') {
+            if (e.key === 'F1') {
+                e.preventDefault();
+                handleNew();
+            } else if (e.key === 'F2') {
                 e.preventDefault();
                 fetchSchedules();
             } else if (e.key === 'F3') {
@@ -185,6 +203,7 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
     const filteredSchedules = schedules;
 
     const handleScheduleSelect = async (sch: AdSchedule) => {
+        setIsCreating(false);
         setSelectedSchedule(sch);
         try {
             setLoading(true);
@@ -262,6 +281,7 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
                     </div>
 
                     <div className="mgmt-btn-group">
+                        <ToolbarBtn icon={<Plus size={16} />} label="신규(F1)" variant="primary" onClick={handleNew} />
                         <ToolbarBtn icon={<RefreshCw size={16} className={loading ? 'animate-spin' : ''} />} label="새로고침(F2)" variant="secondary" onClick={fetchSchedules} />
                         <ToolbarBtn icon={<Search size={16} />} label="조회(F3)" variant="primary" onClick={fetchSchedules} />
                         <ToolbarBtn icon={<FileSpreadsheet size={16} />} label="엑셀(F7)" variant="success" onClick={() => { }} />
@@ -361,26 +381,41 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
 
                 {/* Right - Detail Setting */}
                 <div className="ass-detail-card">
-                    {!selectedSchedule ? (
+                    {(!selectedSchedule && !isCreating) ? (
                         <div className="mgmt-card" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                            좌측 목록에서 스케쥴을 선택해 주세요.
+                            좌측 목록에서 스케쥴을 선택하거나 '신규' 버튼을 눌러주세요.
                         </div>
                     ) : (
                         <>
                             {/* Right Top - Vendor Selection */}
-                            <div className="mgmt-card" style={{ flex: 'none', display: 'flex', flexDirection: 'column', height: '220px' }}>
-                                <div className="ass-subgrid-header" >대상 점포</div>
+                            <div className="mgmt-card" style={{ flex: 'none', display: 'flex', flexDirection: 'column', height: '280px' }}>
+                                <div className="ass-subgrid-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>대상 점포</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                        <Search size={12} />
+                                        <input 
+                                            className="mgmt-input" 
+                                            placeholder="점포 검색..." 
+                                            value={detailVendorSearch} 
+                                            onChange={(e) => setDetailVendorSearch(e.target.value)}
+                                            style={{ width: '150px', height: '24px', fontSize: '11px', padding: '0 5px' }}
+                                        />
+                                    </div>
+                                </div>
 
                                 <div className="mgmt-table-wrapper ass-table-wrapper" style={{ flex: 1 }}>
                                     <table className="mgmt-table">
                                         <thead>
                                             <tr>
                                                 <th style={{ width: '40px' }} className="text-center">선택</th>
+                                                <th style={{ width: '100px' }}>점포코드</th>
                                                 <th>점포명</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {displayedVendors.map(v => (
+                                            {displayedVendors
+                                                .filter(v => (v.VENDOR_NM || '').includes(detailVendorSearch) || (v.VENDOR_CD || '').includes(detailVendorSearch))
+                                                .map(v => (
                                                 <tr key={v.VENDOR_CD} className={selectedVendorCodes.includes(v.VENDOR_CD) ? 'selected' : ''}>
                                                     <td className="text-center">
                                                         <input
@@ -392,6 +427,7 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
                                                             }}
                                                         />
                                                     </td>
+                                                    <td className="text-center">{v.VENDOR_CD}</td>
                                                     <td>{v.VENDOR_NM}</td>
                                                 </tr>
                                             ))}
@@ -411,8 +447,8 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
                                     <span className="mgmt-label" style={{ fontSize: '13px', fontWeight: 700 }}>컨텐츠</span>
                                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '2px' }}>
                                         <select
-                                            className="mgmt-select"
-                                            style={{ width: '300px', height: '30px' }}
+                                            className="mgmt-input"
+                                            style={{ width: '400px', height: '36px', fontSize: '13px' }}
                                             value={selectedTemplateKey}
                                             onChange={(e) => setSelectedTemplateKey(e.target.value)}
                                         >
@@ -423,10 +459,10 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
                                                 </option>
                                             ))}
                                         </select>
-                                        <button className="mgmt-toolbar-btn" style={{ height: '30px', padding: '0 8px' }} onClick={() => alert('상세 선택 기능은 준비 중입니다.')}>...</button>
+                                        <button className="mgmt-toolbar-btn" style={{ height: '36px', padding: '0 10px' }} onClick={() => alert('상세 선택 기능은 준비 중입니다.')}>...</button>
                                     </div>
-                                    <button className="mgmt-toolbar-btn mgmt-btn-success" style={{ height: '30px', padding: '0 12px' }} onClick={handleBulkApply}>
-                                        <FileCheck size={14} /> 일괄적용(A)
+                                    <button className="mgmt-toolbar-btn mgmt-btn-success" style={{ height: '36px', padding: '0 15px', fontSize: '13px' }} onClick={handleBulkApply}>
+                                        <FileCheck size={16} /> 일괄적용(A)
                                     </button>
                                 </div>
 

@@ -20,7 +20,7 @@ router.get('/store-status', (req, res) => {
                 FROM TPR_DPLOG GROUP BY CORP_CD, VENDOR_CD, DEVICE_ID
             ) m ON t.CORP_CD = m.CORP_CD AND t.VENDOR_CD = m.VENDOR_CD AND t.DEVICE_ID = m.DEVICE_ID AND t.REGISTDT = m.MAX_REGISTDT
         ) L ON V.CORP_CD = L.CORP_CD AND V.VENDOR_CD = L.VENDOR_CD AND VD.DEVICE_ID = L.DEVICE_ID
-        WHERE V.CORP_CD = ? AND V.VENDOR_SEC = '2'
+        WHERE V.CORP_CD = ?
     `;
     const params = [corpCd];
     if (vendorNm) { query += " AND (V.VENDOR_NM LIKE ? OR V.VENDOR_CD LIKE ?)"; params.push(`%${vendorNm}%`, `%${vendorNm}%`); }
@@ -31,7 +31,7 @@ router.get('/store-status', (req, res) => {
     db.query(query, params, (err, results) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
         let filtered = results; if (status && status !== 'ALL') filtered = results.filter(r => r.STATUS === status);
-        res.json({ success: true, statusList: filtered });
+        res.json({ success: true, status: filtered });
     });
 });
 

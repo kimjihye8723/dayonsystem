@@ -1,69 +1,159 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Activity, RefreshCw } from 'lucide-react';
-import WebRTCPlayer from './WebRTCPlayer';
+import { Activity, RefreshCw, CheckCircle2 } from 'lucide-react';
+import axios from 'axios';
 
 interface RealTimeStatusContentProps {
     theme: 'light' | 'dark';
 }
 
-const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _theme }) => {
-    // Mock data for counters
-    const counters = {
-        total: { in: 158, out: 142 },
-        male: { in: 82, out: 75 },
-        female: { in: 76, out: 67 }
-    };
+interface Vendor {
+    VENDOR_CD: string;
+    VENDOR_NM: string;
+}
 
+interface RealtimeData {
+    connect_yn: string;
+    total_in: number;
+    total_out: number;
+    male_in: number;
+    male_out: number;
+    female_in: number;
+    female_out: number;
+    last_update?: string;
+}
+
+interface HourlyData {
+    hour: string;
+    totalIn: number;
+    totalOut: number;
+    maleIn: number;
+    maleOut: number;
+    femaleIn: number;
+    femaleOut: number;
+}
+
+const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme }) => {
+    const [vendors, setVendors] = useState<Vendor[]>([]);
+    const [selectedVendor, setSelectedVendor] = useState<string>('');
     const [loading, setLoading] = useState(false);
+    
+    const [realtime, setRealtime] = useState<RealtimeData>({
+        connect_yn: 'N', total_in: 0, total_out: 0, male_in: 0, male_out: 0, female_in: 0, female_out: 0
+    });
+    const [hourlyData, setHourlyData] = useState<HourlyData[]>([]);
 
-    const handleRefresh = useCallback(async () => {
-        setLoading(true);
-        // Simulate refresh
-        await new Promise(r => setTimeout(r, 500));
-
-        setLoading(false);
-        console.log("Real-time data refreshed");
+    useEffect(() => {
+        // Fetch vendors
+        axios.get('/api/realtimestatus/vendors')
+            .then(res => {
+                if (res.data.success) {
+                    setVendors(res.data.vendors);
+                    if (res.data.vendors.length > 0) {
+                        setSelectedVendor(res.data.vendors[0].VENDOR_CD);
+                    }
+                }
+            })
+            .catch(err => console.error("Error fetching vendors:", err));
     }, []);
+
+    const fetchData = useCallback(async () => {
+        if (!selectedVendor) return;
+        setLoading(true);
+        try {
+            const res = await axios.get('/api/realtimestatus/data', {
+                params: { vendorCd: selectedVendor }
+            });
+            if (res.data.success) {
+                setRealtime(res.data.realtime);
+                setHourlyData(res.data.hourly);
+            }
+        } catch (err) {
+            console.error("Error fetching realtime data:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedVendor]);
+
+    useEffect(() => {
+        fetchData();
+        
+        // 30s Auto-refresh
+        const intervalId = setInterval(() => {
+            fetchData();
+        }, 30000);
+
+        return () => clearInterval(intervalId);
+    }, [fetchData]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'F2') {
                 e.preventDefault();
-                handleRefresh();
+                fetchData();
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleRefresh]);
+    }, [fetchData]);
 
-    // Mock data for hourly table
-    const hourlyData = [
-        { hour: '11:00 ~ 12:00', totalIn: 24, totalOut: 18, maleIn: 12, maleOut: 10, femaleIn: 12, femaleOut: 8 },
-        { hour: '10:00 ~ 11:00', totalIn: 32, totalOut: 28, maleIn: 18, maleOut: 14, femaleIn: 14, femaleOut: 14 },
-        { hour: '09:00 ~ 10:00', totalIn: 18, totalOut: 12, maleIn: 10, maleOut: 6, femaleIn: 8, femaleOut: 6 },
-        { hour: '08:00 ~ 09:00', totalIn: 12, totalOut: 5, maleIn: 7, maleOut: 2, femaleIn: 5, femaleOut: 3 },
-    ];
-
-    // Construct WebRTC gateway URL
-    // Provided sample URL format: https://cctv.mysmartgate.kr/stream/cctv/channel/2001/webrtc
-    const gatewayBaseUrl = import.meta.env.VITE_WEBRTC_GATEWAY_URL || 'https://cctv.mysmartgate.kr';
-    const channel = import.meta.env.VITE_WEBRTC_CHANNEL || '2001';
-
-    // Construct the final URL to match the sample exactly
-    const WEBRTC_STREAM_URL = gatewayBaseUrl.endsWith('/webrtc')
-        ? gatewayBaseUrl
-        : `${gatewayBaseUrl.replace(/\/$/, '')}/stream/cctv/channel/${channel}/webrtc`;
+    // Derived Stay count
+    const totalInNum = Number(realtime.total_in) || 0;
+    const totalOutNum = Number(realtime.total_out) || 0;
+    const stayCount = Math.max(0, totalInNum - totalOutNum);
+    const stayPercentage = totalInNum > 0 ? Math.round((stayCount / totalInNum) * 100) : 0;
 
     return (
         <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
             {/* Page Toolbar */}
             <div style={{
                 display: 'flex',
-                justifyContent: 'flex-end',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 marginBottom: '1rem'
             }}>
+                {/* Vendor Selector Area */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>거래처 선택</h3>
+                    <select
+                        value={selectedVendor}
+                        onChange={e => setSelectedVendor(e.target.value)}
+                        style={{
+                            padding: '0.4rem 1rem',
+                            borderRadius: '0.25rem',
+                            border: '1px solid var(--glass-border)',
+                            background: 'var(--bg-card)',
+                            color: 'var(--text-main)',
+                            fontSize: '0.9rem',
+                            width: '250px'
+                        }}
+                    >
+                        {vendors.map(v => (
+                            <option key={v.VENDOR_CD} value={v.VENDOR_CD}>{v.VENDOR_NM}</option>
+                        ))}
+                    </select>
+                    
+                    {/* Connection Status Badge */}
+                    {selectedVendor && realtime.connect_yn === 'Y' && (
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            padding: '0.4rem 0.8rem',
+                            backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                            border: '1px solid rgba(52, 211, 153, 0.3)',
+                            borderRadius: '2rem',
+                            color: '#34d399',
+                            fontSize: '0.85rem',
+                            fontWeight: 700
+                        }}>
+                            <CheckCircle2 size={16} />
+                            CCTV 연결됨 (Active)
+                        </div>
+                    )}
+                </div>
+
                 <button
-                    onClick={handleRefresh}
+                    onClick={fetchData}
                     style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -82,7 +172,7 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
                     onMouseLeave={(e) => e.currentTarget.style.filter = 'none'}
                 >
                     <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                    새로고침(F2)
+                    {loading ? '갱신 중...' : '새로고침(F5)'}
                 </button>
             </div>
 
@@ -91,21 +181,21 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
                 {/* Total Card */}
                 <div className="rt-card rt-sky">
                     <div className="rt-card-header">
-                        <span className="rt-card-title">누적 전체 (Total)</span>
+                        <span className="rt-card-title">누적 전체 (Total In)</span>
                         <div className="rt-card-icon"><Activity size={18} /></div>
                     </div>
                     <div className="rt-value-display">
-                        <span className="rt-main-value">{counters.total.in + counters.total.out}</span>
+                        <span className="rt-main-value">{realtime.total_in}</span>
                         <span className="rt-unit">명</span>
                     </div>
                     <div className="rt-grid-mini">
                         <div className="rt-mini-item">
                             <span className="rt-mini-label">입장</span>
-                            <span className="rt-mini-value">{counters.total.in}</span>
+                            <span className="rt-mini-value">{realtime.total_in}</span>
                         </div>
                         <div className="rt-mini-item">
                             <span className="rt-mini-label">퇴장</span>
-                            <span className="rt-mini-value" style={{ opacity: 0.7 }}>{counters.total.out}</span>
+                            <span className="rt-mini-value" style={{ opacity: 0.7 }}>{realtime.total_out}</span>
                         </div>
                     </div>
                 </div>
@@ -113,21 +203,21 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
                 {/* Male Card */}
                 <div className="rt-card rt-emerald">
                     <div className="rt-card-header">
-                        <span className="rt-card-title">누적 남성 (Male)</span>
+                        <span className="rt-card-title">현 실시간 남성 (Male Stay)</span>
                         <div className="rt-card-icon"><Activity size={18} /></div>
                     </div>
                     <div className="rt-value-display">
-                        <span className="rt-main-value">{counters.male.in + counters.male.out}</span>
+                        <span className="rt-main-value">{Math.max(0, Number(realtime.male_in) - Number(realtime.male_out))}</span>
                         <span className="rt-unit">명</span>
                     </div>
                     <div className="rt-grid-mini">
                         <div className="rt-mini-item">
                             <span className="rt-mini-label">입장</span>
-                            <span className="rt-mini-value">{counters.male.in}</span>
+                            <span className="rt-mini-value">{realtime.male_in}</span>
                         </div>
                         <div className="rt-mini-item">
                             <span className="rt-mini-label">퇴장</span>
-                            <span className="rt-mini-value" style={{ opacity: 0.7 }}>{counters.male.out}</span>
+                            <span className="rt-mini-value" style={{ opacity: 0.7 }}>{realtime.male_out}</span>
                         </div>
                     </div>
                 </div>
@@ -135,21 +225,21 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
                 {/* Female Card */}
                 <div className="rt-card rt-rose">
                     <div className="rt-card-header">
-                        <span className="rt-card-title">누적 여성 (Female)</span>
+                        <span className="rt-card-title">현 실시간 여성 (Female Stay)</span>
                         <div className="rt-card-icon"><Activity size={18} /></div>
                     </div>
                     <div className="rt-value-display">
-                        <span className="rt-main-value">{counters.female.in + counters.female.out}</span>
+                        <span className="rt-main-value">{Math.max(0, Number(realtime.female_in) - Number(realtime.female_out))}</span>
                         <span className="rt-unit">명</span>
                     </div>
                     <div className="rt-grid-mini">
                         <div className="rt-mini-item">
                             <span className="rt-mini-label">입장</span>
-                            <span className="rt-mini-value">{counters.female.in}</span>
+                            <span className="rt-mini-value">{realtime.female_in}</span>
                         </div>
                         <div className="rt-mini-item">
                             <span className="rt-mini-label">퇴장</span>
-                            <span className="rt-mini-value" style={{ opacity: 0.7 }}>{counters.female.out}</span>
+                            <span className="rt-mini-value" style={{ opacity: 0.7 }}>{realtime.female_out}</span>
                         </div>
                     </div>
                 </div>
@@ -167,7 +257,7 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
                         }}></div>
                     </div>
                     <div className="rt-value-display">
-                        <span className="rt-main-value" style={{ fontSize: '2.8rem' }}>{counters.total.in - counters.total.out}</span>
+                        <span className="rt-main-value" style={{ fontSize: '2.8rem' }}>{stayCount}</span>
                         <span className="rt-unit">명</span>
                     </div>
                     <div style={{ marginTop: 'auto' }}>
@@ -178,116 +268,69 @@ const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme: _t
                             overflow: 'hidden'
                         }}>
                             <div style={{
-                                width: `${((counters.total.in - counters.total.out) / counters.total.in) * 100}%`,
+                                width: `${stayPercentage}%`,
                                 height: '100%',
                                 background: '#fbbf24',
                                 borderRadius: '2px'
                             }}></div>
                         </div>
                         <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.4rem', display: 'block' }}>
-                            입장객 대비 {Math.round(((counters.total.in - counters.total.out) / counters.total.in) * 100)}% 체류 중
+                            입장객 대비 {stayPercentage}% 체류 중
                         </span>
                     </div>
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
-                {/* Video Stream Area */}
-                <div style={{ flex: '0 0 auto' }}>
-                    <div style={{
-                        marginBottom: '1rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem'
-                    }}>
-                        <div style={{ width: '8px', height: '24px', background: 'var(--primary)', borderRadius: '4px' }}></div>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>실시간 영상 스트림</h3>
-                        <span style={{
-                            background: '#ef4444',
-                            color: 'white',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            fontSize: '0.7rem',
-                            fontWeight: 700,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                        }}>
-                            <span style={{ width: '6px', height: '6px', background: 'white', borderRadius: '50%', animation: 'pulse 1s infinite' }}></span> LIVE
-                        </span>
-                    </div>
-                    <div style={{
-                        width: '600px',
-                        height: '337px',
-                        background: '#000',
-                        borderRadius: '0.5rem',
-                        overflow: 'hidden',
-                        border: '1px solid var(--glass-border)',
-                        position: 'relative',
-                        boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
-                    }}>
-                        <WebRTCPlayer streamUrl={WEBRTC_STREAM_URL} />
-                        <div style={{
-                            position: 'absolute',
-                            top: '1rem',
-                            right: '1rem',
-                            color: 'white',
-                            fontSize: '0.75rem',
-                            background: 'rgba(0,0,0,0.5)',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            zIndex: 10
-                        }}>
-
-                        </div>
-                    </div>
+            {/* Hourly Table - Full width now since video is gone */}
+            <div style={{ width: '100%' }}>
+                <div style={{
+                    marginBottom: '1rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.75rem'
+                }}>
+                    <div style={{ width: '8px', height: '24px', background: 'var(--primary)', borderRadius: '4px' }}></div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>당일 시간대별 상세 통계</h3>
                 </div>
-
-                {/* Hourly Table */}
-                <div style={{ flex: '1 1 500px' }}>
-                    <div style={{
-                        marginBottom: '1rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.75rem'
-                    }}>
-                        <div style={{ width: '8px', height: '24px', background: 'var(--primary)', borderRadius: '4px' }}></div>
-                        <h3 style={{ fontSize: '1.2rem', fontWeight: 700 }}>시간대별 상세 통계</h3>
-                    </div>
-                    <div className="data-card" style={{ padding: 0, background: 'var(--bg-card)', borderRadius: '0.5rem', border: '1px solid var(--glass-border)' }}>
-                        <table className="data-table" style={{ margin: 0 }}>
-                            <thead>
-                                <tr>
-                                    <th style={{ padding: '1rem' }}>시간대</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center' }}>전체 (입/퇴)</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center' }}>남성 (입/퇴)</th>
-                                    <th style={{ padding: '1rem', textAlign: 'center' }}>여성 (입/퇴)</th>
+                <div className="data-card" style={{ padding: 0, background: 'var(--bg-card)', borderRadius: '0.5rem', border: '1px solid var(--glass-border)' }}>
+                    <table className="data-table" style={{ margin: 0, width: '100%' }}>
+                        <thead>
+                            <tr>
+                                <th style={{ padding: '1rem', textAlign: 'center' }}>시간대</th>
+                                <th style={{ padding: '1rem', textAlign: 'center' }}>전체 (입/퇴)</th>
+                                <th style={{ padding: '1rem', textAlign: 'center' }}>남성 (입/퇴)</th>
+                                <th style={{ padding: '1rem', textAlign: 'center' }}>여성 (입/퇴)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {hourlyData.length > 0 ? hourlyData.map((data, idx) => (
+                                <tr key={idx}>
+                                    <td style={{ padding: '1rem', fontWeight: 600, textAlign: 'center' }}>{data.hour}시</td>
+                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                        <span style={{ color: 'var(--text-main)' }}>{data.totalIn}</span>
+                                        <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
+                                        <span style={{ color: 'var(--text-muted)' }}>{data.totalOut}</span>
+                                    </td>
+                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                        <span style={{ color: '#34d399' }}>{data.maleIn}</span>
+                                        <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
+                                        <span style={{ color: 'var(--text-muted)' }}>{data.maleOut}</span>
+                                    </td>
+                                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                        <span style={{ color: '#fb7185' }}>{data.femaleIn}</span>
+                                        <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
+                                        <span style={{ color: 'var(--text-muted)' }}>{data.femaleOut}</span>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {hourlyData.map((data, idx) => (
-                                    <tr key={idx}>
-                                        <td style={{ padding: '1rem', fontWeight: 600 }}>{data.hour}</td>
-                                        <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                            <span style={{ color: 'var(--text-main)' }}>{data.totalIn}</span>
-                                            <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
-                                            <span style={{ color: 'var(--text-muted)' }}>{data.totalOut}</span>
-                                        </td>
-                                        <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                            <span style={{ color: '#34d399' }}>{data.maleIn}</span>
-                                            <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
-                                            <span style={{ color: 'var(--text-muted)' }}>{data.maleOut}</span>
-                                        </td>
-                                        <td style={{ padding: '1rem', textAlign: 'center' }}>
-                                            <span style={{ color: '#fb7185' }}>{data.femaleIn}</span>
-                                            <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>/</span>
-                                            <span style={{ color: 'var(--text-muted)' }}>{data.femaleOut}</span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                            )) : (
+                                <tr>
+                                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                        해당일의 시간대별 데이터가 없습니다.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

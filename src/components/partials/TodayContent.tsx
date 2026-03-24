@@ -1,48 +1,96 @@
 import { Search, Printer, BarChart3, TrendingUp, UserPlus, UserMinus, Users, RefreshCw } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import Chart from 'react-apexcharts';
+import axios from 'axios';
 
 interface TodayContentProps {
     theme?: 'light' | 'dark';
 }
 
-interface DataItem {
-    time: string;
-    in: number;
-    out: number;
-    stay: number;
-    total: number;
-}
-
 const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
     const [chartType, setChartType] = useState<'bar' | 'line'>('bar');
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+    const [vendors, setVendors] = useState<{ VENDOR_CD: string, VENDOR_NM: string }[]>([]);
+    const [selectedVendor, setSelectedVendor] = useState<string>('(전체조회)');
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [loading, setLoading] = useState(false);
+    
+    const [hourlyData, setHourlyData] = useState<any[]>([]);
+    const [dailyTotals, setDailyTotals] = useState({ totalIn: 0, totalOut: 0, maleIn: 0, maleOut: 0, femaleIn: 0, femaleOut: 0 });
 
-    // Get color based on theme from CSS variables or defaults
+    // Get color based on theme
     const textColor = theme === 'light' ? '#64748b' : '#94a3b8';
 
-    const dummyData: DataItem[] = [
-        { time: '09:00 ~ 10:00', in: 45, out: 12, stay: 33, total: 57 },
-        { time: '10:00 ~ 11:00', in: 82, out: 34, stay: 81, total: 116 },
-        { time: '11:00 ~ 12:00', in: 124, out: 56, stay: 149, total: 180 },
-        { time: '12:00 ~ 13:00', in: 95, out: 88, stay: 156, total: 183 },
-        { time: '13:00 ~ 14:00', in: 156, out: 42, stay: 270, total: 198 },
-        { time: '14:00 ~ 15:00', in: 88, out: 65, stay: 293, total: 153 },
-        { time: '15:00 ~ 16:00', in: 72, out: 95, stay: 270, total: 167 },
-        { time: '16:00 ~ 17:00', in: 45, out: 120, stay: 195, total: 165 },
-        { time: '17:00 ~ 18:00', in: 110, out: 85, stay: 220, total: 195 },
-        { time: '18:00 ~ 19:00', in: 190, out: 45, stay: 365, total: 235 },
-        { time: '19:00 ~ 20:00', in: 65, out: 150, stay: 280, total: 215 },
-    ];
+    const fetchVendors = useCallback(async () => {
+        try {
+            const res = await axios.get('/api/realtimestatus/vendors');
+            if (res.data.success) {
+                setVendors(res.data.vendors);
+            }
+        } catch (err) {
+            console.error("Error fetching vendors:", err);
+        }
+    }, []);
+
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await axios.get('/api/realtimestatus/data', {
+                params: {
+                    vendorCd: selectedVendor,
+                    date: selectedDate
+                }
+            });
+            if (res.data.success) {
+                setHourlyData(res.data.hourly);
+                if (res.data.dailyTotals) {
+                    setDailyTotals(res.data.dailyTotals);
+                }
+            }
+        } catch (err) {
+            console.error("Error fetching today data:", err);
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedVendor, selectedDate]);
+
+    useEffect(() => {
+        fetchVendors();
+    }, [fetchVendors]);
+
+    useEffect(() => {
+        fetchData();
+        const interval = setInterval(fetchData, 30000);
+        return () => clearInterval(interval);
+    }, [fetchData]);
+
+    const handleRefresh = () => fetchData();
+
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'F5' || e.key === 'F2') {
+                e.preventDefault();
+                handleRefresh();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [fetchData]);
 
     const handleExport = (format: string) => {
         setIsExportMenuOpen(false);
         const headers = ['시간', '입장', '퇴장', '잔류', '합계'];
-        const rows = dummyData.map(d => [d.time, d.in.toString(), d.out.toString(), d.stay.toString(), d.total.toString()]);
+        const rows = hourlyData.map(d => [
+            `${d.hour}:00`, 
+            d.totalIn.toString(), 
+            d.totalOut.toString(), 
+            (Number(d.totalIn) - Number(d.totalOut)).toString(), 
+            (Number(d.totalIn) + Number(d.totalOut)).toString()
+        ]);
 
         const now = new Date();
         const dateStr = `${now.getFullYear()}_${(now.getMonth() + 1).toString().padStart(2, '0')}_${now.getDate().toString().padStart(2, '0')}`;
-        const companyName = "현대보안월드";
+        const companyName = selectedVendor === '(전체조회)' ? "전체거래처" : vendors.find(v => v.VENDOR_CD === selectedVendor)?.VENDOR_NM || "거래처";
         let fileName = `고데이터_${companyName}_투데이통계_${dateStr}`;
         let content = '';
         let mimeType = 'text/plain';
@@ -58,8 +106,8 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
                 fileName += '.tsv';
                 break;
             case 'xml':
-                content = `<?xml version="1.0" encoding="UTF-8"?>\n<data>\n${dummyData.map(d =>
-                    `  <row>\n    <time>${d.time}</time>\n    <in>${d.in}</in>\n    <out>${d.out}</out>\n    <stay>${d.stay}</stay>\n    <total>${d.total}</total>\n  </row>`
+                content = `<?xml version="1.0" encoding="UTF-8"?>\n<data>\n${hourlyData.map(d =>
+                    `  <row>\n    <time>${d.hour}:00</time>\n    <in>${d.totalIn}</in>\n    <out>${d.totalOut}</out>\n    <stay>${Number(d.totalIn) - Number(d.totalOut)}</stay>\n    <total>${Number(d.totalIn) + Number(d.totalOut)}</total>\n  </row>`
                 ).join('\n')}\n</data>`;
                 fileName += '.xml';
                 mimeType = 'application/xml';
@@ -95,8 +143,8 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
                             </head>
                             <body>
                                 <div class="header">
-                                    <div class="company">현대보안월드</div>
-                                    <div class="title">투데이 통계 리포트</div>
+                                    <div class="company">${companyName}</div>
+                                    <div class="title">투데이 통계 리포트 (${selectedDate})</div>
                                 </div>
                                 <table>
                                     <thead>
@@ -133,35 +181,8 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
         URL.revokeObjectURL(url);
     };
 
-    const totals = {
-        in: dummyData.reduce((acc, cur) => acc + cur.in, 0),
-        out: dummyData.reduce((acc, cur) => acc + cur.out, 0),
-        stay: dummyData[dummyData.length - 1].stay,
-        total: dummyData.reduce((acc, cur) => acc + cur.total, 0),
-    };
-
-    const [loading, setLoading] = useState(false);
-
-    const handleRefresh = useCallback(async () => {
-        setLoading(true);
-        
-        // Simulate re-fetching
-        await new Promise(r => setTimeout(r, 500));
-        
-        setLoading(false);
-        console.log("Data refreshed");
-    }, []);
-
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'F2') {
-                e.preventDefault();
-                handleRefresh();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleRefresh]);
+    // dailyTotals comes pre-computed from backend: SUM(hourly stats) + real-time current values
+    const stayCount = Math.max(0, dailyTotals.totalIn - dailyTotals.totalOut);
 
     const chartOptions: ApexCharts.ApexOptions = {
         chart: {
@@ -191,7 +212,7 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
         },
         colors: ['#38bdf8', '#fb7185', '#34d399', '#fbbf24'],
         xaxis: {
-            categories: dummyData.map(d => d.time.split('~')[0].trim()),
+            categories: hourlyData.map(d => `${d.hour}시`),
             axisBorder: { show: false },
             axisTicks: { show: false },
             labels: {
@@ -278,19 +299,19 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
     const chartSeries = [
         {
             name: '입장',
-            data: dummyData.map(d => d.in)
+            data: hourlyData.map(d => d.totalIn)
         },
         {
             name: '퇴장',
-            data: dummyData.map(d => d.out)
+            data: hourlyData.map(d => d.totalOut)
         },
         {
             name: '잔류',
-            data: dummyData.map(d => d.stay)
+            data: hourlyData.map(d => Number(d.totalIn) - Number(d.totalOut))
         },
         {
             name: '합계',
-            data: dummyData.map(d => d.total)
+            data: hourlyData.map(d => Number(d.totalIn) + Number(d.totalOut))
         }
     ];
 
@@ -299,41 +320,34 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
             {/* Filter Bar */}
             <div className="filter-bar">
                 <div className="filter-group">
-                    <select className="filter-input" style={{ width: '120px' }}>
+                    <select 
+                        className="filter-input" 
+                        style={{ width: '200px' }}
+                        value={selectedVendor}
+                        onChange={(e) => setSelectedVendor(e.target.value)}
+                    >
                         <option>(전체조회)</option>
-                        <option>쇼룸</option>
+                        {vendors.map(v => (
+                            <option key={v.VENDOR_CD} value={v.VENDOR_CD}>{v.VENDOR_NM}</option>
+                        ))}
                     </select>
                 </div>
                 <div className="filter-group">
-                    <input type="date" className="filter-input" defaultValue="2026-02-23" />
+                    <input 
+                        type="date" 
+                        className="filter-input" 
+                        value={selectedDate} 
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                    />
                 </div>
-                <div className="filter-group">
-                    <select className="filter-input" style={{ width: '100px' }}>
-                        <option>60분단위</option>
-                        <option>30분단위</option>
-                        <option>15분단위</option>
-                        <option>05분단위</option>
-                    </select>
-                </div>
-                <div className="filter-group">
-                    <select className="filter-input" style={{ width: '80px' }}>
-                        <option>수동</option>
-                        <option>60초</option>
-                        <option>45초</option>
-                        <option>30초</option>
-                        <option>20초</option>
-                        <option>10초</option>
-                        <option>5초</option>
-                        <option>1초</option>
-                    </select>
-                </div>
+                
                 <div className="filter-group">
                     <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }} onClick={handleRefresh}>
-                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> 새로고침(F2)
+                        <RefreshCw size={16} className={loading ? 'animate-spin' : ''} /> {loading ? '갱신 중...' : '새로고침(F5)'}
                     </button>
                 </div>
                 <div className="filter-group">
-                    <button className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', gap: '0.5rem', fontSize: '0.875rem' }}>
+                    <button className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', gap: '0.5rem', fontSize: '0.875rem' }} onClick={handleRefresh}>
                         <Search size={16} /> 조회
                     </button>
                 </div>
@@ -367,37 +381,37 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
                 <div className="summary-card card-sky">
                     <div className="card-icon"><UserPlus size={24} /></div>
                     <div>
-                        <div className="title">입장</div>
-                        <div className="main-val">{totals.in.toLocaleString()} <span className="unit">명</span></div>
+                        <div className="title">누적 입장</div>
+                        <div className="main-val">{dailyTotals.totalIn.toLocaleString()} <span className="unit">명</span></div>
                     </div>
-                    <div className="sub-val">월간 3,420 명</div>
+                    <div className="sub-val">오늘 누적 수치</div>
                 </div>
 
                 <div className="summary-card card-rose">
                     <div className="card-icon"><UserMinus size={24} /></div>
                     <div>
-                        <div className="title">퇴장</div>
-                        <div className="main-val">{totals.out.toLocaleString()} <span className="unit">명</span></div>
+                        <div className="title">누적 퇴장</div>
+                        <div className="main-val">{dailyTotals.totalOut.toLocaleString()} <span className="unit">명</span></div>
                     </div>
-                    <div className="sub-val">월간 2,980 명</div>
+                    <div className="sub-val">오늘 누적 수치</div>
                 </div>
 
                 <div className="summary-card card-emerald">
                     <div className="card-icon"><Users size={24} /></div>
                     <div>
-                        <div className="title">잔류</div>
-                        <div className="main-val">{totals.stay.toLocaleString()} <span className="unit">명</span></div>
+                        <div className="title">현재 잔류</div>
+                        <div className="main-val">{stayCount.toLocaleString()} <span className="unit">명</span></div>
                     </div>
-                    <div className="sub-val">월간 0 명</div>
+                    <div className="sub-val">In - Out 현황</div>
                 </div>
 
                 <div className="summary-card card-amber">
                     <div className="card-icon"><BarChart3 size={24} /></div>
                     <div>
-                        <div className="title">합계</div>
-                        <div className="main-val">{totals.total.toLocaleString()} <span className="unit">명</span></div>
+                        <div className="title">교통량 합계</div>
+                        <div className="main-val">{(dailyTotals.totalIn + dailyTotals.totalOut).toLocaleString()} <span className="unit">명</span></div>
                     </div>
-                    <div className="sub-val">월간 6,400 명</div>
+                    <div className="sub-val">In + Out 합계</div>
                 </div>
             </div>
 
@@ -458,21 +472,26 @@ const TodayContent: React.FC<TodayContentProps> = ({ theme = 'dark' }) => {
                                 <th>시간</th>
                                 <th>입장</th>
                                 <th>퇴장</th>
-                                <th>잔류</th>
-                                <th>합계</th>
+                                <th>잔류(현원)</th>
+                                <th>교통량(합계)</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {dummyData.map((data, index) => (
+                            {hourlyData.map((data, index) => (
                                 <tr key={index} style={{ borderBottom: '1px solid var(--table-border)' }}>
-                                    <td style={{ color: 'var(--text-muted)' }}>{index + 1}</td>
-                                    <td style={{ color: 'var(--text-main)', fontWeight: 600 }}>{data.time}</td>
-                                    <td style={{ color: '#38bdf8', fontWeight: 600 }}>{data.in}</td>
-                                    <td style={{ color: '#fb7185', fontWeight: 600 }}>{data.out}</td>
-                                    <td style={{ color: '#34d399', fontWeight: 600 }}>{data.stay}</td>
-                                    <td style={{ color: '#fbbf24', fontWeight: 600 }}>{data.total}</td>
+                                    <td style={{ color: 'var(--text-muted)', textAlign: 'center' }}>{index + 1}</td>
+                                    <td style={{ color: 'var(--text-main)', fontWeight: 600, textAlign: 'center' }}>{data.hour}시</td>
+                                    <td style={{ color: '#38bdf8', fontWeight: 600, textAlign: 'center' }}>{data.totalIn}</td>
+                                    <td style={{ color: '#fb7185', fontWeight: 600, textAlign: 'center' }}>{data.totalOut}</td>
+                                    <td style={{ color: '#34d399', fontWeight: 600, textAlign: 'center' }}>{Number(data.totalIn) - Number(data.totalOut)}</td>
+                                    <td style={{ color: '#fbbf24', fontWeight: 600, textAlign: 'center' }}>{Number(data.totalIn) + Number(data.totalOut)}</td>
                                 </tr>
                             ))}
+                            {hourlyData.length === 0 && !loading && (
+                                <tr>
+                                    <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>가져올 데이터가 없습니다.</td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>

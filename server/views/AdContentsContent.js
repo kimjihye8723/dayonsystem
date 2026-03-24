@@ -90,13 +90,13 @@ router.get('/ad-contents/files', (req, res) => {
     const query = `
         SELECT A.CONTENTS_KEY AS EDT_CONTENTS_KEY, A.CONTENTS_NM AS edt_Contents_NM, A.REG_DT AS dtp_Reg_DT, A.USE_YN AS chk_UseYn, FCM_GET_CORPNM(A.CORP_CD, 'F') AS edt_Company, FCM_GET_VENDORNM(A.CORP_CD, A.VENDOR_CD, 'F') AS edt_Vendor,
             CASE WHEN (ROUND((C.FILE_SIZE / 1024) * 0.1, 2) >= 1) THEN CONCAT(ROUND((C.FILE_SIZE / 1024) * 0.001, 2), 'MB') ELSE CONCAT(ROUND((C.FILE_SIZE / 1024), 2), 'KB') END AS FILE_SIZE_STR,
-            C.FTP_FILENAME AS DB_FTP_FILENAME, C.FILE_NAME AS DB_FILE_NAME, C.FILE_KEY AS DB_FILE_KEY, C.FILE_MD5 AS DB_FILE_MD5, C.FILE_SIZE AS DB_FILE_SIZE, B.DISP_SEQ AS PLAY_SEQ, B.IMAGE_DELAY AS DELAY_TIME, B.IN_EFFECT AS EFFECT_IN, B.OUT_EFFECT AS EFFECT_OUT, B.USE_YN, B.REMARK, C.FILE_KEY, C.FILE_NAME, C.FILE_TITLE, C.FILE_SIZE, C.FILE_MD5
+            C.FTP_FILENAME AS DB_FTP_FILENAME, C.FILE_NAME AS DB_FILE_NAME, C.FILE_KEY AS DB_FILE_KEY, C.FILE_MD5 AS DB_FILE_MD5, C.FILE_SIZE AS DB_FILE_SIZE, C.GENDER, B.DISP_SEQ AS PLAY_SEQ, B.IMAGE_DELAY AS DELAY_TIME, B.IN_EFFECT AS EFFECT_IN, B.OUT_EFFECT AS EFFECT_OUT, B.USE_YN, B.REMARK, C.FILE_KEY, C.FILE_NAME, C.FILE_TITLE, C.FILE_SIZE, C.FILE_MD5
         FROM TCM_CONTENTS A LEFT OUTER JOIN TCM_CONTENTS_LIST B ON A.CORP_CD = B.CORP_CD AND A.CONTENTS_KEY = B.CONTENTS_KEY JOIN TCM_CONTENTS_FILE C ON B.CORP_CD = C.CORP_CD AND B.FILE_KEY = C.FILE_KEY
         WHERE A.CORP_CD = ? AND A.CONTENTS_KEY = ? ORDER BY B.DISP_SEQ
     `;
     db.query(query, [corpCd, contentsId], (err, results) => {
         if (err) {
-            const fallbackQuery = `SELECT L.FILE_KEY, F.FILE_NAME, F.FILE_TITLE, L.USE_YN, L.DISP_SEQ AS PLAY_SEQ, L.IMAGE_DELAY AS DELAY_TIME, L.IN_EFFECT AS EFFECT_IN, L.OUT_EFFECT AS EFFECT_OUT, F.FILE_SIZE, F.FILE_MD5, L.REMARK FROM TCM_CONTENTS_LIST L JOIN TCM_CONTENTS_FILE F ON L.CORP_CD = F.CORP_CD AND L.FILE_KEY = F.FILE_KEY WHERE L.CORP_CD = ? AND L.CONTENTS_KEY = ? ORDER BY L.DISP_SEQ ASC`;
+            const fallbackQuery = `SELECT L.FILE_KEY, F.FILE_NAME, F.FILE_TITLE, F.GENDER, L.USE_YN, L.DISP_SEQ AS PLAY_SEQ, L.IMAGE_DELAY AS DELAY_TIME, L.IN_EFFECT AS EFFECT_IN, L.OUT_EFFECT AS EFFECT_OUT, F.FILE_SIZE, F.FILE_MD5, L.REMARK FROM TCM_CONTENTS_LIST L JOIN TCM_CONTENTS_FILE F ON L.CORP_CD = F.CORP_CD AND L.FILE_KEY = F.FILE_KEY WHERE L.CORP_CD = ? AND L.CONTENTS_KEY = ? ORDER BY L.DISP_SEQ ASC`;
             db.query(fallbackQuery, [corpCd, contentsId], (err2, results2) => {
                 if (err2) return res.status(500).json({ success: false, error: err2.message });
                 res.json({ success: true, files: results2 });
@@ -109,7 +109,7 @@ router.get('/ad-contents/files', (req, res) => {
 
 router.get('/ad-contents/active-files', (req, res) => {
     const corpCd = '25001';
-    db.query("SELECT FILE_KEY, FILE_NAME, FILE_TITLE, FILE_SIZE, FILE_MD5, FILE_TYP, USE_YN, REMARK FROM TCM_CONTENTS_FILE WHERE CORP_CD = ? AND USE_YN = 'Y' ORDER BY REGISTDT DESC, FILE_KEY DESC", [corpCd], (err, results) => {
+    db.query("SELECT FILE_KEY, FILE_NAME, FILE_TITLE, FILE_SIZE, FILE_MD5, FILE_TYP, USE_YN, REMARK, GENDER FROM TCM_CONTENTS_FILE WHERE CORP_CD = ? AND USE_YN = 'Y' ORDER BY REGISTDT DESC, FILE_KEY DESC", [corpCd], (err, results) => {
         if (err) return res.status(500).json({ success: false, error: err.message });
         res.json({ success: true, files: results });
     });
@@ -136,11 +136,14 @@ router.post('/ad-contents/save', (req, res) => {
                 const playSeq = (f.PLAY_SEQ !== undefined && f.PLAY_SEQ !== null) ? f.PLAY_SEQ : (idx + 1);
                 const params = [corpCd, content.CONTENTS_ID, f.FILE_KEY, playSeq, f.DELAY_TIME || 0, f.EFFECT_IN || '', f.EFFECT_OUT || '', f.USE_YN || 'Y', f.REMARK || ''];
                 db.query(sql, params, (err1) => {
-                    if (err1) errors.push(err1.message);
-                    if (++completed === files.length) {
-                        if (errors.length > 0) res.status(500).json({ success: false, errors });
-                        else res.json({ success: true });
-                    }
+                    const updateFileSql = `UPDATE TCM_CONTENTS_FILE SET GENDER = ? WHERE CORP_CD = ? AND FILE_KEY = ?`;
+                    db.query(updateFileSql, [f.GENDER || null, corpCd, f.FILE_KEY], (errUpdate) => {
+                        if (err1 || errUpdate) errors.push(err1?.message || errUpdate?.message);
+                        if (++completed === files.length) {
+                            if (errors.length > 0) res.status(500).json({ success: false, errors });
+                            else res.json({ success: true });
+                        }
+                    });
                 });
             });
         });
@@ -184,8 +187,9 @@ router.delete('/ad-contents', (req, res) => {
     });
 });
 
-// TODO: 파일업로드 작업 미완 - 웹게시 환경 확정 시 수정 필요
-const uploadDir = 'D:\\dayon_file';
+// 파일업로드 작업 - 웹게시 환경 확정: D:\dayon_file
+const uploadDir = 'D:\\dayon_file'; 
+// const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -224,7 +228,8 @@ router.get('/contents-files/download', (req, res) => {
     const { filename } = req.query;
     if (!filename) return res.status(400).send('파일명이 필요합니다.');
 
-    const uploadDir = 'D:\\dayon_file';
+    const uploadDir = 'D:\\dayon_file'; 
+    // const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
     const filePath = path.join(uploadDir, filename);
 
     if (fs.existsSync(filePath)) {

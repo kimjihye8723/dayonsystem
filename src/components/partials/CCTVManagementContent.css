@@ -1,0 +1,73 @@
+/* CCTVManagementContent.css */
+/* Inherit styles from DeviceManagementContent.css via common classes, but can add specifics here */
+.dm-title-text {
+    font-size: 1.25rem;
+    font-weight: 900;
+    color: var(--text-main);
+    letter-spacing: -0.025em;
+}
+
+.dm-filter-card {
+    padding: 1.25rem;
+    display: flex;
+    gap: 2.5rem;
+    align-items: flex-end;
+}
+
+.dm-main-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.dm-info-bar {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid var(--mgmt-glass-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.dm-total-count {
+    background: var(--mgmt-primary-glow);
+    color: var(--mgmt-primary);
+    padding: 0.2rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.dm-table-wrapper {
+    flex: 1;
+}
+
+.dm-table-col-check {
+    width: 40px;
+    text-align: center;
+}
+
+.dm-table-cell-center {
+    text-align: center;
+}
+
+.dm-table-input {
+    border: none !important;
+    background: transparent !important;
+    padding: 0.5rem !important;
+    width: 100%;
+}
+
+.dm-table-select {
+    border: none !important;
+    background: transparent !important;
+    width: 100%;
+    cursor: pointer;
+}
+
+.dm-table-empty {
+    text-align: center;
+    padding: 60px;
+    color: var(--text-muted);
+}

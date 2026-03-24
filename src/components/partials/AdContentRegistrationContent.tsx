@@ -17,6 +17,7 @@ interface AdContentFile {
     FILE_KEY: string;
     FILE_NAME: string;
     FILE_TITLE: string;
+    GENDER?: string | null;
     USE_YN: string;
     PLAY_SEQ: number;
     DELAY_TIME: number;
@@ -282,7 +283,7 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
         if (vendorModalTarget === 'filter') {
             setAdvertiserSearch(v.VENDOR_NM);
         } else if (vendorModalTarget === 'detail') {
-            setSelectedContent(prev => prev ? { ...prev, ADVERTISER: v.VENDOR_NM } : null);
+            setSelectedContent(prev => prev ? { ...prev, ADVERTISER: v.VENDOR_NM, VENDOR_CD: v.VENDOR_CD } : null);
         }
         setIsVendorModalOpen(false);
     };
@@ -443,6 +444,7 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                                     <th style={{ width: '40px' }}>NO</th>
                                     <th style={{ width: '100px' }}>파일명</th>
                                     <th style={{ width: '200px' }}>파일제목</th>
+                                    <th style={{ width: '80px' }}>성별</th>
                                     <th style={{ width: '60px' }}>사용유무</th>
                                     <th style={{ width: '60px' }}>재생순서</th>
                                     <th style={{ width: '120px' }}>딜레이타임(이미지)</th>
@@ -474,6 +476,17 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                                         </td>
                                         <td title={f.FILE_TITLE || ''}>
                                             <div className="ellipsis-cell" style={{ maxWidth: '200px' }}>{f.FILE_TITLE}</div>
+                                        </td>
+                                        <td className="text-center">
+                                            <select 
+                                                className="mgmt-input table-inner-input" 
+                                                value={f.GENDER || ''} 
+                                                onChange={(e) => handleFileChange(f.FILE_KEY, 'GENDER', e.target.value || null)}
+                                            >
+                                                <option value="">없음</option>
+                                                <option value="M">남성</option>
+                                                <option value="F">여성</option>
+                                            </select>
                                         </td>
                                         <td className="text-center">
                                             <input 

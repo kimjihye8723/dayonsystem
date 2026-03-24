@@ -11,6 +11,7 @@ import BasicCodeContent from './partials/BasicCodeContent';
 import RealTimeStatusContent from './partials/RealTimeStatusContent';
 import BoardManagementContent from './partials/BoardManagementContent';
 import DeviceManagementContent from './partials/DeviceManagementContent';
+import CCTVManagementContent from './partials/CCTVManagementContent';
 import VendorManagementContent from './partials/VendorManagementContent';
 import UserManagementContent from './partials/UserManagementContent';
 import UserPermissionManagementContent from './partials/UserPermissionManagementContent';
@@ -231,6 +232,8 @@ const getTabContent = (id: string, theme: 'light' | 'dark', closeTabById: (id: s
             return <BoardManagementContent theme={theme} />;
         case 'devicemgmt':
             return <DeviceManagementContent theme={theme} />;
+        case 'cctvmgmt':
+            return <CCTVManagementContent theme={theme} />;
         case 'vendormgmt':
             return <VendorManagementContent theme={theme} />;
         case 'usermgmt':

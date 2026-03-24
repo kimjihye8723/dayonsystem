@@ -37,29 +37,87 @@ router.get('/ad-schedules/detail', (req, res) => {
     });
 });
 
-router.post('/ad-schedules/save', (req, res) => {
+router.get('/ad-schedules/templates', (req, res) => {
+    const corpCd = '25001';
+    // Get unique schedules with a representative vendor name for pattern selection
+    const query = `
+        SELECT S.SCHEDULE_KEY, S.REG_DT, V.VENDOR_NM as REPRESENTATIVE_VENDOR_NM
+        FROM TCM_VENDOR_SCH S
+        LEFT JOIN TCM_VENDOR V ON S.CORP_CD = V.CORP_CD AND S.VENDOR_CD = V.VENDOR_CD
+        WHERE S.CORP_CD = ?
+        GROUP BY S.SCHEDULE_KEY
+        ORDER BY S.REG_DT DESC
+        LIMIT 50
+    `;
+    db.query(query, [corpCd], (err, results) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        res.json({ success: true, templates: results });
+    });
+});
+
+router.post('/ad-schedules/save', async (req, res) => {
     const { schedule, vendorCodes, gridData } = req.body;
     const corpCd = '25001';
-    if (!vendorCodes || vendorCodes.length === 0) return res.status(400).json({ success: false, message: '점포 선택 필요' });
+    
+    if (!vendorCodes || vendorCodes.length === 0) {
+        return res.status(400).json({ success: false, message: '점포 선택 필요' });
+    }
+
     const scheduleKey = schedule.SCHEDULE_KEY || `SC${new Date().toISOString().replace(/[-:T.Z]/g, '').slice(2, 16)}`;
     const regDt = schedule.REG_DT?.replace(/-/g, '') || new Date().toISOString().split('T')[0].replace(/-/g, '');
     const startDt = schedule.START_DT?.replace(/-/g, '') || regDt;
     const endDt = schedule.END_DT?.replace(/-/g, '') || '20301231';
-    let total = vendorCodes.length * gridData.length, completed = 0, errors = [];
-    vendorCodes.forEach(vCd => {
-        gridData.forEach(day => {
-            const sql = `INSERT INTO TCM_VENDOR_SCH (CORP_CD, SCHEDULE_KEY, REG_DT, SCHEDULE_SEC, VENDOR_CD, START_DT, END_DT, DAY_SEC, USE_YN, SCH_00, SCH_01, SCH_02, SCH_03, SCH_04, SCH_05, SCH_06, SCH_07, SCH_08, SCH_09, SCH_10, SCH_11, SCH_12, SCH_13, SCH_14, SCH_15, SCH_16, SCH_17, SCH_18, SCH_19, SCH_20, SCH_21, SCH_22, SCH_23, REGISTDT, REGISTUSER) VALUES (?, ?, ?, '01', ?, ?, ?, ?, 'Y', ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, NOW(), 'ADMIN') ON DUPLICATE KEY UPDATE SCH_00=VALUES(SCH_00), SCH_01=VALUES(SCH_01), SCH_02=VALUES(SCH_02), SCH_03=VALUES(SCH_03), SCH_04=VALUES(SCH_04), SCH_05=VALUES(SCH_05), SCH_06=VALUES(SCH_06), SCH_07=VALUES(SCH_07), SCH_08=VALUES(SCH_08), SCH_09=VALUES(SCH_09), SCH_10=VALUES(SCH_10), SCH_11=VALUES(SCH_11), SCH_12=VALUES(SCH_12), SCH_13=VALUES(SCH_13), SCH_14=VALUES(SCH_14), SCH_15=VALUES(SCH_15), SCH_16=VALUES(SCH_16), SCH_17=VALUES(SCH_17), SCH_18=VALUES(SCH_18), SCH_19=VALUES(SCH_19), SCH_20=VALUES(SCH_20), SCH_21=VALUES(SCH_21), SCH_22=VALUES(SCH_22), SCH_23=VALUES(SCH_23), MODIFYDT=NOW(), MODIFYUSER='ADMIN'`;
-            const params = [corpCd, scheduleKey, regDt, vCd, startDt, endDt, day.DAY_SEC, day.SCH_00||'', day.SCH_01||'', day.SCH_02||'', day.SCH_03||'', day.SCH_04||'', day.SCH_05||'', day.SCH_06||'', day.SCH_07||'', day.SCH_08||'', day.SCH_09||'', day.SCH_10||'', day.SCH_11||'', day.SCH_12||'', day.SCH_13||'', day.SCH_14||'', day.SCH_15||'', day.SCH_16||'', day.SCH_17||'', day.SCH_18||'', day.SCH_19||'', day.SCH_20||'', day.SCH_21||'', day.SCH_22||'', day.SCH_23||''];
-            db.query(sql, params, (err) => { if (err) errors.push(err.message); if (++completed === total) res.json({ success: true, scheduleKey }); });
-        });
-    });
+
+    try {
+        // Start a primitive "transaction" by executing sequential queries if needed, 
+        // but for now let's just use Promise.all for speed since we use ON DUPLICATE KEY UPDATE.
+        const queries = [];
+
+        for (const vCd of vendorCodes) {
+            for (const day of gridData) {
+                const sql = `
+                    INSERT INTO TCM_VENDOR_SCH (
+                        CORP_CD, SCHEDULE_KEY, REG_DT, SCHEDULE_SEC, VENDOR_CD, START_DT, END_DT, DAY_SEC, DEVICE_ID, USE_YN, 
+                        SCH_00, SCH_01, SCH_02, SCH_03, SCH_04, SCH_05, SCH_06, SCH_07, SCH_08, SCH_09, 
+                        SCH_10, SCH_11, SCH_12, SCH_13, SCH_14, SCH_15, SCH_16, SCH_17, SCH_18, SCH_19, 
+                        SCH_20, SCH_21, SCH_22, SCH_23, REGISTDT, REGISTUSER
+                    ) VALUES (?, ?, ?, '01', ?, ?, ?, ?, 'NONE', 'Y', ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, NOW(), 'ADMIN') 
+                    ON DUPLICATE KEY UPDATE 
+                        SCH_00=VALUES(SCH_00), SCH_01=VALUES(SCH_01), SCH_02=VALUES(SCH_02), SCH_03=VALUES(SCH_03), SCH_04=VALUES(SCH_04), 
+                        SCH_05=VALUES(SCH_05), SCH_06=VALUES(SCH_06), SCH_07=VALUES(SCH_07), SCH_08=VALUES(SCH_08), SCH_09=VALUES(SCH_09), 
+                        SCH_10=VALUES(SCH_10), SCH_11=VALUES(SCH_11), SCH_12=VALUES(SCH_12), SCH_13=VALUES(SCH_13), SCH_14=VALUES(SCH_14), 
+                        SCH_15=VALUES(SCH_15), SCH_16=VALUES(SCH_16), SCH_17=VALUES(SCH_17), SCH_18=VALUES(SCH_18), SCH_19=VALUES(SCH_19), 
+                        SCH_20=VALUES(SCH_20), SCH_21=VALUES(SCH_21), SCH_22=VALUES(SCH_22), SCH_23=VALUES(SCH_23), 
+                        MODIFYDT=NOW(), MODIFYUSER='ADMIN'
+                `;
+                const params = [
+                    corpCd, scheduleKey, regDt, vCd, startDt, endDt, day.DAY_SEC, 
+                    day.SCH_00||'', day.SCH_01||'', day.SCH_02||'', day.SCH_03||'', day.SCH_04||'', day.SCH_05||'', 
+                    day.SCH_06||'', day.SCH_07||'', day.SCH_08||'', day.SCH_09||'', day.SCH_10||'', day.SCH_11||'', 
+                    day.SCH_12||'', day.SCH_13||'', day.SCH_14||'', day.SCH_15||'', day.SCH_16||'', day.SCH_17||'', 
+                    day.SCH_18||'', day.SCH_19||'', day.SCH_20||'', day.SCH_21||'', day.SCH_22||'', day.SCH_23||''
+                ];
+                
+                queries.push(new Promise((resolve, reject) => {
+                    db.query(sql, params, (err) => err ? reject(err) : resolve());
+                }));
+            }
+        }
+
+        await Promise.all(queries);
+        res.json({ success: true, scheduleKey });
+
+    } catch (err) {
+        console.error('[API] /ad-schedules/save error:', err);
+        res.status(500).json({ success: false, message: '저장 중 오류가 발생했습니다.', error: err.message });
+    }
 });
 
 router.get('/today-applied-schedules', (req, res) => {
     const { vendorNm } = req.query;
     const corpCd = '25001';
     const daySec = new Date().getDay().toString();
-    let sql = `SELECT V.VENDOR_CD, V.VENDOR_NM, V.OPEN_TIME, V.CLOSE_TIME, S.SCH_00, S.SCH_01, S.SCH_02, S.SCH_03, S.SCH_04, S.SCH_05, S.SCH_06, S.SCH_07, S.SCH_08, S.SCH_09, S.SCH_10, S.SCH_11, S.SCH_12, S.SCH_13, S.SCH_14, S.SCH_15, S.SCH_16, S.SCH_17, S.SCH_18, S.SCH_19, S.SCH_20, S.SCH_21, S.SCH_22, S.SCH_23 FROM TCM_VENDOR V LEFT JOIN TCM_VENDOR_SCH S ON V.CORP_CD = S.CORP_CD AND V.VENDOR_CD = S.VENDOR_CD AND S.DAY_SEC = ? AND S.USE_YN = 'Y' AND DATE_FORMAT(NOW(), '%Y%m%d') BETWEEN S.START_DT AND S.END_DT WHERE V.CORP_CD = ? AND V.VENDOR_SEC = '2'`;
+    let sql = `SELECT V.VENDOR_CD, V.VENDOR_NM, V.OPEN_TIME, V.CLOSE_TIME, S.* FROM TCM_VENDOR V LEFT JOIN TCM_VENDOR_SCH S ON V.CORP_CD = S.CORP_CD AND V.VENDOR_CD = S.VENDOR_CD AND S.DAY_SEC = ? AND S.USE_YN = 'Y' AND DATE_FORMAT(NOW(), '%Y%m%d') BETWEEN S.START_DT AND S.END_DT WHERE V.CORP_CD = ?`;
     const params = [daySec, corpCd]; if (vendorNm) { sql += " AND V.VENDOR_NM LIKE ?"; params.push(`%${vendorNm}%`); }
     sql += " ORDER BY V.VENDOR_NM ASC";
     db.query(sql, params, (err, results) => { if (err) return res.status(500).json({ success: false, error: err.message }); res.json({ success: true, schedules: results }); });
