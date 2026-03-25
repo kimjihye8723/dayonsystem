@@ -236,12 +236,22 @@ router.post('/contents-files/upload', upload.single('file'), (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, message: '파일이 없습니다.' });
     
     try {
-        const fileBuffer = fs.readFileSync(req.file.path);
         const hashSum = crypto.createHash('md5');
-        hashSum.update(fileBuffer);
-        const hex = hashSum.digest('hex').toUpperCase();
-    
-        res.json({ success: true, message: '업로드 완료', md5: hex, filename: req.file.filename, size: req.file.size });
+        const stream = fs.createReadStream(req.file.path);
+        
+        stream.on('data', function (data) {
+            hashSum.update(data);
+        });
+        
+        stream.on('end', function () {
+            const hex = hashSum.digest('hex').toUpperCase();
+            res.json({ success: true, message: '업로드 완료', md5: hex, filename: req.file.filename, size: req.file.size });
+        });
+        
+        stream.on('error', function (err) {
+            console.error('MD5 Stream Error:', err);
+            res.status(500).json({ success: false, error: err.message });
+        });
     } catch (e) {
         console.error('File Upload Error:', e);
         res.status(500).json({ success: false, error: e.message });
