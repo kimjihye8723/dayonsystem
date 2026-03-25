@@ -32,7 +32,7 @@ interface HourlyData {
     femaleOut: number;
 }
 
-const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = ({ theme }) => {
+const RealTimeStatusContent: React.FC<RealTimeStatusContentProps> = () => {
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [selectedVendor, setSelectedVendor] = useState<string>('');
     const [loading, setLoading] = useState(false);
