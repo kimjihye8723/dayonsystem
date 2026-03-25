@@ -425,8 +425,8 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                                         <td className="cfm-col-title">
                                             <input className="cfm-table-input" value={getEditValue(f, 'FILE_TITLE') || ''} onChange={(e) => updateEditingFile(f, 'FILE_TITLE', e.target.value)} />
                                         </td>
-                                        <td className="cfm-col-size">{formatSize(f.FILE_SIZE)}</td>
-                                        <td className="cfm-col-md5">{f.FILE_MD5}</td>
+                                        <td className="cfm-col-size">{formatSize(getEditValue(f, 'FILE_SIZE'))}</td>
+                                        <td className="cfm-col-md5">{getEditValue(f, 'FILE_MD5')}</td>
                                         <td className="cfm-col-gender">
                                             <select className="cfm-table-input" value={getEditValue(f, 'GENDER') || ''} onChange={(e) => updateEditingFile(f, 'GENDER', e.target.value || null)}>
                                                 <option value="">없음</option>

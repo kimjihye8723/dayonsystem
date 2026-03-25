@@ -61,10 +61,34 @@ router.delete('/contents-files', (req, res) => {
     const corpCd = '25001';
     if (!fileKeys || !Array.isArray(fileKeys) || fileKeys.length === 0) return res.status(400).json({ success: false, message: 'fileKeys 필요' });
     const placeholders = fileKeys.map(() => '?').join(', ');
-    const sql = `DELETE FROM TCM_CONTENTS_FILE WHERE CORP_CD = ? AND FILE_KEY IN (${placeholders})`;
-    db.query(sql, [corpCd, ...fileKeys], (err) => {
-        if (err) return res.status(500).json({ success: false, error: err.message });
-        res.json({ success: true, message: '삭제되었습니다.' });
+    
+    // 1. DB에서 지우기 전, 실제 저장된 파일명(FTP_FILENAME) 조회
+    const selectSql = `SELECT FTP_FILENAME FROM TCM_CONTENTS_FILE WHERE CORP_CD = ? AND FILE_KEY IN (${placeholders})`;
+    db.query(selectSql, [corpCd, ...fileKeys], (errSelect, results) => {
+        if (errSelect) return res.status(500).json({ success: false, error: errSelect.message });
+        
+        // 2. DB에서 메타데이터(기록) 우선 삭제
+        const sql = `DELETE FROM TCM_CONTENTS_FILE WHERE CORP_CD = ? AND FILE_KEY IN (${placeholders})`;
+        db.query(sql, [corpCd, ...fileKeys], (err) => {
+            if (err) return res.status(500).json({ success: false, error: err.message });
+            
+            // 3. 실제 컴퓨터의 물리 디스크(D:\dayon_file)에서 영상/이미지 파일 삭제
+            const targetDir = 'D:\\dayon_file'; 
+            results.forEach(row => {
+                if (row.FTP_FILENAME) {
+                    const filePath = path.join(targetDir, row.FTP_FILENAME);
+                    if (fs.existsSync(filePath)) {
+                        try {
+                            fs.unlinkSync(filePath);
+                        } catch(e) {
+                            console.error('Physical file delete error:', e);
+                        }
+                    }
+                }
+            });
+            
+            res.json({ success: true, message: '삭제되었습니다.' });
+        });
     });
 });
 
@@ -188,8 +212,8 @@ router.delete('/ad-contents', (req, res) => {
 });
 
 // 파일업로드 작업 - 웹게시 환경 확정: D:\dayon_file (상설 대기)
-// const uploadDir = 'D:\\dayon_file'; 
-const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
+const uploadDir = 'D:\\dayon_file'; 
+// const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
@@ -228,8 +252,8 @@ router.get('/contents-files/download', (req, res) => {
     const { filename } = req.query;
     if (!filename) return res.status(400).send('파일명이 필요합니다.');
 
-    // const uploadDir = 'D:\\dayon_file'; 
-    const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
+    const uploadDir = 'D:\\dayon_file'; 
+    //const uploadDir = 'D:\\PROJECT\\안티그래비티\\대연시스템 - 테스트 파일 경로';
     const filePath = path.join(uploadDir, filename);
 
     if (fs.existsSync(filePath)) {
