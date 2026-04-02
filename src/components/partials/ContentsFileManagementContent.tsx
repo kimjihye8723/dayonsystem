@@ -2,7 +2,41 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, CloudUpload, FileVideo, Plus } from 'lucide-react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
+import SparkMD5 from 'spark-md5';
+import imageCompression from 'browser-image-compression';
 import '../../styles/partials/ContentsFileManagementContent.css';
+
+// MD5 추출용 헬퍼 함수
+const calculateMD5 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const blobSlice = File.prototype.slice || (File.prototype as any).mozSlice || (File.prototype as any).webkitSlice;
+        const chunkSize = 2097152; // 2MB
+        const chunks = Math.ceil(file.size / chunkSize);
+        let currentChunk = 0;
+        const spark = new SparkMD5.ArrayBuffer();
+        const fileReader = new FileReader();
+
+        fileReader.onload = (e) => {
+            if (e.target?.result) {
+                spark.append(e.target.result as ArrayBuffer);
+            }
+            currentChunk++;
+            if (currentChunk < chunks) {
+                loadNext();
+            } else {
+                resolve(spark.end());
+            }
+        };
+        fileReader.onerror = () => reject('파일 읽기 오류');
+
+        const loadNext = () => {
+            const start = currentChunk * chunkSize;
+            const end = ((start + chunkSize) >= file.size) ? file.size : start + chunkSize;
+            fileReader.readAsArrayBuffer(blobSlice.call(file, start, end));
+        };
+        loadNext();
+    });
+};
 
 interface FileDate {
     REG_DT: string;
@@ -94,8 +128,8 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
         try {
             const res = await axios.post('/api/contents-files/save', editedList);
             if (res.data.success) {
-                alert('변경사항이 저장되었습니다.');
                 setEditingFiles({});
+                alert('변경사항이 저장되었습니다.');
                 fetchFiles();
                 fetchDates();
             }
@@ -118,6 +152,10 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                 data: { fileKeys: Array.from(selectedRows) }
             });
             if (res.data.success) {
+                // Optimistic UI updates
+                setFiles(prev => prev.filter(f => !selectedRows.has(f.FILE_KEY)));
+                setSelectedRows(new Set());
+                
                 alert('삭제되었습니다.');
                 fetchFiles();
                 fetchDates();
@@ -180,14 +218,47 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
     };
 
     const handleFileSelect = async (fileObj: ContentsFile, e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
+        let file = e.target.files?.[0];
         if (file) {
             updateEditingFile(fileObj, 'FILE_NAME', file.name);
             updateEditingFile(fileObj, 'FILE_TITLE', file.name.replace(/\.[^/.]+$/, ""));
             updateEditingFile(fileObj, 'FILE_SIZE', file.size);
-            updateEditingFile(fileObj, 'FILE_MD5', '업로드 중...');
+            
+            // 이미지형 파일이면 압축 먼저 진행 (실패 시 원본 통과)
+            if (file.type.startsWith('image/')) {
+                updateEditingFile(fileObj, 'FILE_MD5', '이미지 압축 중...');
+                try {
+                    const options = {
+                        maxSizeMB: 1, // 최대 1MB 이하로 압축
+                        maxWidthOrHeight: 1920,
+                        useWebWorker: true,
+                    };
+                    const compressedBlob = await imageCompression(file, options);
+                    // Blob을 File 객체로 캐스팅하여 이름과 타입 유지
+                    file = new File([compressedBlob], file.name, { type: compressedBlob.type });
+                    
+                    // 압축된 새로운 파일 용량으로 업데이트
+                    updateEditingFile(fileObj, 'FILE_SIZE', file.size);
+                } catch (error) {
+                    console.error('이미지 압축 실패, 원본 파일로 계속 진행합니다.', error);
+                }
+            }
 
-            // 파일업로드 작업 - 로컬 테스트 경로 사용중 (운영 경로 D:\dayon_file 상설 대기)
+            // 1. 빠른 클라이언트 단 MD5 계산 시작
+            updateEditingFile(fileObj, 'FILE_MD5', '계산 중...');
+            
+            // 백그라운드로 MD5 계산 진행
+            calculateMD5(file).then(md5 => {
+                updateEditingFile(fileObj, 'FILE_MD5', md5);
+            }).catch(err => {
+                console.error('MD5 계산 실패:', err);
+                updateEditingFile(fileObj, 'FILE_MD5', 'CALC_ERROR');
+            });
+
+            // 2. 파일 업로드 병렬 진행
+            updateEditingFile(fileObj, 'FTP_FILENAME', '업로드 중...');
+
+            // 기존 파일업로드 작업 유지
             const formData = new FormData();
             formData.append('file', file);
             try {
@@ -195,16 +266,16 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 if (res.data.success) {
-                    updateEditingFile(fileObj, 'FILE_MD5', res.data.md5);
+                    // 업로드 성공 시 서버 파일명 반영
                     updateEditingFile(fileObj, 'FTP_FILENAME', res.data.filename);
                 } else {
                     alert('파일 업로드 실패: ' + res.data.message);
-                    updateEditingFile(fileObj, 'FILE_MD5', 'UPLOAD_FAILED');
+                    updateEditingFile(fileObj, 'FTP_FILENAME', 'UPLOAD_FAILED');
                 }
             } catch (err) {
                 console.error(err);
                 alert('파일 업로드를 처리하는 중 오류가 발생했습니다.');
-                updateEditingFile(fileObj, 'FILE_MD5', 'UPLOAD_FAILED');
+                updateEditingFile(fileObj, 'FTP_FILENAME', 'UPLOAD_FAILED');
             }
         }
     };

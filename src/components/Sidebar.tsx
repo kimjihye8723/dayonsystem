@@ -97,8 +97,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <nav className="sidebar-nav">
                 <div style={{ paddingBottom: '1rem' }}>
-                    <NavItem id="today" icon={<BarChart3 size={18} />} label="투데이" activeId={activeTabId} onClick={onTabSelect} />
-                    <NavItem id="realtime" icon={<Activity size={18} />} label="실시간 현황" activeId={activeTabId} onClick={onTabSelect} />
+                    {/* <NavItem id="today" icon={<BarChart3 size={18} />} label="투데이" activeId={activeTabId} onClick={onTabSelect} />
+                    <NavItem id="realtime" icon={<Activity size={18} />} label="실시간 현황" activeId={activeTabId} onClick={onTabSelect} /> */}
                     <a
                         href="http://www.godata.co.kr:90/"
                         target="_blank"

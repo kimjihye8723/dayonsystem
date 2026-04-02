@@ -41,7 +41,7 @@ const FILE_BASE_PATH = process.env.FILE_PATH || 'D:\\dayon_file';
 
 const FILE_SERVER_PORT = parseInt(process.env.FILE_SERVER_PORT || '9090', 10);
 const SCHEDULE_POLL_INTERVAL = 60000;   // 1분마다 스케줄 체크
-const GENDER_POLL_INTERVAL = 10000;     // 10초마다 성별 체크
+const GENDER_POLL_INTERVAL = 5000;      // 5초마다 상태 체크 (15초 사이클 대응)
 const PROGRAM_GUID = 'program-0';
 
 // ─────────────────────────────────────────────────────────────
@@ -180,11 +180,13 @@ class HuiduLedClient {
             return false;
         }
 
-        // LED가 파일 다운로드 중이면 방해하지 않음
+        /* 
+        // LED가 파일 다운로드 중이면 방해하지 않음 (스킵 로직 비활성화 - 강제 전송 우선)
         if (this._isDownloading) {
             log('LED', `[${this.name}] 파일 다운로드 진행 중, 전송 스킵`);
             return true;
         }
+        */
 
         // 동일 프로그램 재전송 방지
         const hash = crypto.createHash('md5')
@@ -443,7 +445,10 @@ class ScheduleManager {
         const now = new Date();
         const currentHour = now.getHours();
         const dayOfWeek = now.getDay().toString(); // 0=일, 1=월, ...
-        const today = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+        
+        // 로컬 날짜 (YYYYMMDD)
+        const p = (n) => n.toString().padStart(2, '0');
+        const today = `${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}`;
 
         const schColumn = `SCH_${String(currentHour).padStart(2, '0')}`;
 
@@ -500,12 +505,13 @@ class ScheduleManager {
                 return [];
             }
 
-            // 시간이 바뀌거나 콘텐츠가 변경된 경우에만 파일 목록 갱신
-            if (currentHour === this._lastHour && contentsKey === this._currentContentsKey) {
+            // 시간이 바뀌거나 콘텐츠가 변경된 경우에만 파일 목록 갱신 (단, 기존 목록이 비어있으면 재조회)
+            if (currentHour === this._lastHour && contentsKey === this._currentContentsKey && this._currentFileList.length > 0) {
                 return this._currentFileList;
             }
 
             // 2. CONTENTS_KEY → TCM_CONTENTS_LIST → TCM_CONTENTS_FILE 체인 조회
+            log('SCHEDULE', `[${vendorCd}] CONTENTS_KEY=${contentsKey} → 파일 목록 조회 중 (CORP_CD=${CORP_CD})`);
             const fileRows = await dbQuery(`
                 SELECT 
                     F.FILE_KEY, F.FILE_NAME, F.FTP_FILENAME, F.FILE_TITLE,
@@ -526,10 +532,14 @@ class ScheduleManager {
             this._currentContentsKey = contentsKey;
             this._currentFileList = fileRows;
 
-            log('SCHEDULE', `[${vendorCd}] ${currentHour}시 콘텐츠(${contentsKey}) → ${fileRows.length}개 파일 로드`);
-            fileRows.forEach((f, i) => {
-                log('SCHEDULE', `  ${i + 1}. ${f.FILE_NAME} (${f.GENDER || '무관'}) ${Math.round((f.FILE_SIZE || 0) / 1024)}KB`);
-            });
+            if (fileRows.length > 0) {
+                log('SCHEDULE', `[${vendorCd}] ${currentHour}시 콘텐츠(${contentsKey}) → ${fileRows.length}개 파일 로드`);
+                fileRows.forEach((f, i) => {
+                    log('SCHEDULE', `  ${i + 1}. ${f.FILE_NAME} (GENDER:${f.GENDER || 'null'})`);
+                });
+            } else {
+                log('WARN', `[${vendorCd}] CONTENTS_KEY=${contentsKey}에 해당하는 유효한 파일이 없습니다. (USE_YN 확인 필요)`);
+            }
 
             return fileRows;
         } catch (err) {
@@ -597,25 +607,22 @@ class GenderFilter {
     }
 
     /**
-     * 성별 상태에 따라 파일 목록 필터링
+     * 상태에 따라 파일 목록 필터링
      * @param {Array} files 전체 파일 목록
-     * @param {'M'|'F'|'ALL'} genderState 성별 상태
+     * @param {'M'|'F'|'NORMAL'|'ALL_GENDER'} state 필터링 상태
      * @returns {Array} 필터링된 파일 목록
      */
-    filterFiles(files, genderState) {
-        if (genderState === 'ALL' || !genderState) {
-            return files; // 전체 순차 재생
+    filterFiles(files, state) {
+        if (state === 'NORMAL') {
+            // 젠더 컬럼이 null이거나 비어있는 것만 목록화
+            return files.filter(f => !f.GENDER || f.GENDER === '' || f.GENDER === 'null');
+        } else if (state === 'ALL_GENDER') {
+            // 성별이 지정된 모든 파일 (M 또는 F)
+            return files.filter(f => f.GENDER === 'M' || f.GENDER === 'F');
+        } else {
+            // 젠더 M이면 남자목록, F면 여자목록 (엄격하게 필터링)
+            return files.filter(f => f.GENDER === state);
         }
-
-        const filtered = files.filter(f => f.GENDER === genderState);
-        
-        // 해당 성별 파일이 없으면 전체 재생 (fallback)
-        if (filtered.length === 0) {
-            log('GENDER', `${genderState === 'M' ? '남성' : '여성'} 전용 파일 없음 → 전체 재생으로 폴백`);
-            return files;
-        }
-
-        return filtered;
     }
 }
 
@@ -704,10 +711,10 @@ async function main() {
             genderFilter,
             
             // 재생 제어 상태
-            cycleCount: 0,           // 누적 재생 횟수
-            playbackMode: 'ALL',      // 'ALL' (전체) <-> 'GENDER' (성별 전용)
-            nextCycleTime: 0,        // 다음 교체 가능 시간 (timestamp)
-            lastSentHash: null       // 마지막 전송 콘텐트 해시
+            cycleCount: 0,           
+            playbackMode: 'NORMAL',   // 'NORMAL' (3분) <-> 'GENDER' (20초)
+            nextCycleTime: 0,        
+            lastSentHash: null       
         };
     });
 
@@ -769,8 +776,9 @@ async function main() {
         return videoList;
     }
 
-    // 6. 개별 컨트롤러 업데이트 함수 (3분 주기로 교대 재생)
-    const CYCLE_STEP_MS = 3 * 60 * 1000; // 3분 고정
+    // 6. 개별 컨트롤러 업데이트 함수 (180초/15초 고정 주기 교대 재생)
+    const CYCLE_NORMAL_MS = 180 * 1000; // 정상영상 180초
+    const CYCLE_GENDER_MS = 15 * 1000;  // 성별영상 15초
 
     async function updateController(ctrl, forceUpdate = false) {
         if (!ctrl.ledClient.isReady()) return;
@@ -783,11 +791,11 @@ async function main() {
         }
 
         try {
-            // [상태 전환] 3분이 지났으므로 모드 교체
-            if (!forceUpdate && ctrl.nextCycleTime > 0) {
+            // [상태 전환] 주기가 지났으며, 재생할 파일이 있었을 경우에만 모드 교체
+            if (!forceUpdate && ctrl.nextCycleTime > 0 && ctrl.lastSentHash) {
                 const oldMode = ctrl.playbackMode;
-                ctrl.playbackMode = (oldMode === 'ALL') ? 'GENDER' : 'ALL';
-                log('CTRL', `[${ctrl.vendorNm}] 3분 주기 종료 → 모드 전환: ${oldMode} → ${ctrl.playbackMode}`);
+                ctrl.playbackMode = (oldMode === 'NORMAL') ? 'GENDER' : 'NORMAL';
+                log('CTRL', `[${ctrl.vendorNm}] 주기 종료 → 모드 전환 시도: ${oldMode} → ${ctrl.playbackMode}`);
             }
 
             // 2. 현재 시간대(또는 가까운 시간대) 스케줄 확보
@@ -799,24 +807,37 @@ async function main() {
             }
 
             // 3. 모드에 따른 필터링 적용
-            let filteredFiles = allFiles;
-            let currentTargetGender = 'ALL';
+            let filteredFiles = [];
+            let currentTarget = 'NORMAL';
 
             if (ctrl.playbackMode === 'GENDER') {
                 const gender = await ctrl.genderFilter.checkGender(ctrl.vendorCd);
-                if (gender.state !== 'ALL') {
-                    filteredFiles = ctrl.genderFilter.filterFiles(allFiles, gender.state);
-                    currentTargetGender = gender.state;
+                if (gender.state === 'ALL') {
+                    currentTarget = 'ALL_GENDER';
                 } else {
-                    // 성별 우위가 없으면 그냥 전체 재생(ALL) 유지
-                    ctrl.playbackMode = 'ALL';
+                    currentTarget = gender.state;
+                }
+                filteredFiles = ctrl.genderFilter.filterFiles(allFiles, currentTarget);
+                
+                // 만약 성별 영상이 하나도 없다면, 정상영상 모드로 즉시 복구 (타이머도 정상 주기로 설정됨)
+                if (filteredFiles.length === 0) {
+                    log('CTRL', `[${ctrl.vendorNm}] [${currentTarget}] 영상 없음 → 정상영상으로 즉시 복귀`);
+                    ctrl.playbackMode = 'NORMAL';
                 }
             }
+            
+            if (ctrl.playbackMode === 'NORMAL') {
+                currentTarget = 'NORMAL';
+                filteredFiles = ctrl.genderFilter.filterFiles(allFiles, 'NORMAL');
+            }
 
-            // 4. 비디오 목록 생성
+            // 최종 재생 시간 결정 (복귀한 모드 기준)
+            const currentStepMs = (ctrl.playbackMode === 'NORMAL') ? CYCLE_NORMAL_MS : CYCLE_GENDER_MS;
+
+            // 4. 비디오 목록 생성 (필터링된 결과물)
             const videoList = await filesToVideoList(filteredFiles);
             if (videoList.length === 0) {
-                log('WARN', `[${ctrl.vendorNm}] 재생할 영상이 없음 (10초 후 재시도)`);
+                log('WARN', `[${ctrl.vendorNm}] 송출할 대상 영상(파일)이 없습니다. (10초 후 재시도)`);
                 ctrl.nextCycleTime = now + 10000;
                 return;
             }
@@ -827,16 +848,16 @@ async function main() {
                 .digest('hex');
             
             if (programHash === ctrl.lastSentHash && !forceUpdate) {
-                // 변경 사항이 없더라도 타이머는 3분 뒤로 갱신
-                ctrl.nextCycleTime = now + CYCLE_STEP_MS;
+                // 변경 사항이 없더라도 타이머는 주기만큼 갱신
+                ctrl.nextCycleTime = now + currentStepMs;
                 return;
             }
 
             // 6. LED 전송 (여기서 딱 한 번만 명령이 나감)
-            const modeDesc = (ctrl.playbackMode === 'GENDER') ? `성별타겟(${currentTargetGender})` : '전체재생';
-            log('CTRL', `[${ctrl.vendorNm}] === ${modeDesc} 송출 시작 (파일: ${videoList.length}개, 3분간 유지) ===`);
+            const modeDesc = (ctrl.playbackMode === 'GENDER') ? `성별타겟(${currentTarget})` : '정상영상(GENDER NULL)';
+            log('CTRL', `[${ctrl.vendorNm}] === ${modeDesc} 송출 시작 (파일: ${filteredFiles.length}개, ${currentStepMs/1000}초 유지) ===`);
             
-            ctrl.nextCycleTime = now + CYCLE_STEP_MS;
+            ctrl.nextCycleTime = now + currentStepMs;
             ctrl.lastSentHash = programHash;
             
             // LED 클라이언트 상태 초기화 후 전송

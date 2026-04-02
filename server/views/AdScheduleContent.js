@@ -113,6 +113,24 @@ router.post('/ad-schedules/save', async (req, res) => {
     }
 });
 
+router.delete('/ad-schedules', (req, res) => {
+    const { scheduleKey } = req.body;
+    const corpCd = '25001';
+    
+    if (!scheduleKey) {
+        return res.status(400).json({ success: false, message: 'scheduleKey 필요' });
+    }
+
+    const query = `DELETE FROM TCM_VENDOR_SCH WHERE CORP_CD = ? AND SCHEDULE_KEY = ?`;
+    db.query(query, [corpCd, scheduleKey], (err, results) => {
+        if (err) {
+            console.error('[API] /ad-schedules delete error:', err);
+            return res.status(500).json({ success: false, message: '삭제 중 오류가 발생했습니다.', error: err.message });
+        }
+        res.json({ success: true });
+    });
+});
+
 router.get('/today-applied-schedules', (req, res) => {
     const { vendorNm } = req.query;
     const corpCd = '25001';

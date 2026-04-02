@@ -193,10 +193,35 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [fetchSchedules, handleSave]);
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!selectedSchedule) return;
         if (window.confirm('선택한 스케쥴을 삭제하시겠습니까?')) {
-            alert('삭제 기능은 현재 준비 중입니다.');
+            try {
+                setLoading(true);
+                const res = await axios.delete('/api/ad-schedules', {
+                    data: { scheduleKey: selectedSchedule.SCHEDULE_KEY }
+                });
+                if (res.data.success) {
+                    // Optimistic update
+                    setSchedules(prev => prev.filter(s => s.SCHEDULE_KEY !== selectedSchedule.SCHEDULE_KEY));
+                    setSelectedSchedule(null);
+                    setGridData(DAYS.map(day => {
+                        const row: any = { DAY_SEC: day.id, DAY_NM: day.name };
+                        HOURS.forEach(h => row[`SCH_${h}`] = '');
+                        return row;
+                    }));
+                    setSelectedVendorCodes([]);
+                    setDisplayedVendors([]);
+                    
+                    alert('삭제되었습니다.');
+                    fetchSchedules();
+                }
+            } catch (e: any) {
+                console.error('Delete schedule error:', e);
+                alert('삭제 실패: ' + (e.response?.data?.message || e.message));
+            } finally {
+                setLoading(false);
+            }
         }
     };
 

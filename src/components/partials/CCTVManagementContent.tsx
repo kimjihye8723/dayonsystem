@@ -68,6 +68,8 @@ const CCTVManagementContent: React.FC<Props> = ({ theme }) => {
             id: tempId, // UI용 유니크 ID
             idx: null,
             CONNECT_INFO: '',
+            HOSTNAME: '',
+            DEVICE_SN: '',
             DEVICE_RTSP: '',
             SET_DT: new Date().toISOString().slice(0, 8).replace(/-/g, ''),
             USE_VENDOR: '',
@@ -195,6 +197,8 @@ const CCTVManagementContent: React.FC<Props> = ({ theme }) => {
                                 </th>
                                 <th style={{ width: '80px' }}>IDX</th>
                                 <th style={{ width: '250px' }}>접속 정보 (URL)</th>
+                                <th style={{ width: '150px' }}>호스트네임</th>
+                                <th style={{ width: '150px' }}>시리얼 넘버</th>
                                 <th style={{ width: '350px' }}>RTSP 스트림 주소</th>
                                 <th style={{ width: '120px' }}>설치일자</th>
                                 <th style={{ width: '200px' }}>사용거래처</th>
@@ -217,6 +221,8 @@ const CCTVManagementContent: React.FC<Props> = ({ theme }) => {
                                         </td>
                                         <td className="dm-table-cell-center">{c.idx || 'New'}</td>
                                         <td><input className="mgmt-input dm-table-input" value={c.CONNECT_INFO || ''} onChange={(e) => handleCellChange(index, 'CONNECT_INFO', e.target.value)} /></td>
+                                        <td><input className="mgmt-input dm-table-input" value={c.HOSTNAME || ''} onChange={(e) => handleCellChange(index, 'HOSTNAME', e.target.value)} /></td>
+                                        <td><input className="mgmt-input dm-table-input" value={c.DEVICE_SN || ''} onChange={(e) => handleCellChange(index, 'DEVICE_SN', e.target.value)} /></td>
                                         <td><input className="mgmt-input dm-table-input" value={c.DEVICE_RTSP || ''} onChange={(e) => handleCellChange(index, 'DEVICE_RTSP', e.target.value)} /></td>
                                         <td><input className="mgmt-input dm-table-input" value={c.SET_DT || ''} onChange={(e) => handleCellChange(index, 'SET_DT', e.target.value)} /></td>
                                         <td>
@@ -233,7 +239,7 @@ const CCTVManagementContent: React.FC<Props> = ({ theme }) => {
                                 );
                             })}
                             {cctvs.length === 0 && !loading && (
-                                <tr><td colSpan={8} className="dm-table-empty">조회된 데이터가 없습니다.</td></tr>
+                                <tr><td colSpan={10} className="dm-table-empty">조회된 데이터가 없습니다.</td></tr>
                             )}
                         </tbody>
                     </table>

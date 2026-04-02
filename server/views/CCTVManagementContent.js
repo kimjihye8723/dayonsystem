@@ -54,17 +54,17 @@ router.post('/cctvs/save', (req, res) => {
 
             if (results && results.length > 0) {
                 // Update
-                const sql = `UPDATE TCM_CCTV SET DEVICE_RTSP=?, SET_DT=?, USE_VENDOR=?, USE_YN=?, REMARK=?, MODIFYDT=NOW(), MODIFYUSER='ADMIN'
+                const sql = `UPDATE TCM_CCTV SET DEVICE_RTSP=?, HOSTNAME=?, DEVICE_SN=?, SET_DT=?, USE_VENDOR=?, USE_YN=?, REMARK=?, MODIFYDT=NOW(), MODIFYUSER='ADMIN'
                              WHERE CORP_CD='25001' AND CONNECT_INFO=?`;
-                db.query(sql, [c.DEVICE_RTSP, c.SET_DT, c.USE_VENDOR, c.USE_YN, c.REMARK, c.CONNECT_INFO], (e) => {
+                db.query(sql, [c.DEVICE_RTSP, c.HOSTNAME, c.DEVICE_SN, c.SET_DT, c.USE_VENDOR, c.USE_YN, c.REMARK, c.CONNECT_INFO], (e) => {
                     if (e) { console.error('CCTV Update Error:', e.message); errors.push(e.message); }
                     if (++completed === cctvs.length) finalize();
                 });
             } else {
                 // Insert
-                const sql = `INSERT INTO TCM_CCTV (CORP_CD, CONNECT_INFO, DEVICE_RTSP, SET_DT, USE_VENDOR, USE_YN, REMARK, REGISTDT, REGISTUSER, idx)
-                             VALUES ('25001', ?, ?, ?, ?, ?, ?, NOW(), 'ADMIN', (SELECT IFNULL(MAX(t2.idx), 0) + 1 FROM (SELECT idx FROM TCM_CCTV WHERE CORP_CD='25001') AS t2))`;
-                db.query(sql, [c.CONNECT_INFO, c.DEVICE_RTSP, c.SET_DT, c.USE_VENDOR, c.USE_YN || 'Y', c.REMARK], (e) => {
+                const sql = `INSERT INTO TCM_CCTV (CORP_CD, CONNECT_INFO, DEVICE_RTSP, HOSTNAME, DEVICE_SN, SET_DT, USE_VENDOR, USE_YN, REMARK, REGISTDT, REGISTUSER, idx)
+                             VALUES ('25001', ?, ?, ?, ?, ?, ?, ?, ?, NOW(), 'ADMIN', (SELECT IFNULL(MAX(t2.idx), 0) + 1 FROM (SELECT idx FROM TCM_CCTV WHERE CORP_CD='25001') AS t2))`;
+                db.query(sql, [c.CONNECT_INFO, c.DEVICE_RTSP, c.HOSTNAME, c.DEVICE_SN, c.SET_DT, c.USE_VENDOR, c.USE_YN || 'Y', c.REMARK], (e) => {
                     if (e) {
                         console.error('CCTV Insert Error:', e.message); 
                         errors.push(e.message); 

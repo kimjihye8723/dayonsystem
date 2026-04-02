@@ -184,9 +184,12 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
             setLoading(true);
             const res = await axios.delete('/api/ad-contents', { data: { contentIds: [selectedContent.CONTENTS_ID] } });
             if (res.data.success) {
-                alert('삭제되었습니다.');
+                // Optimistic UI updating
+                setContents(prev => prev.filter(c => c.CONTENTS_ID !== selectedContent.CONTENTS_ID));
                 setSelectedContent(null);
                 setFiles([]);
+                
+                alert('삭제되었습니다.');
                 fetchContents();
             }
         } catch (err: any) {

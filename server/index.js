@@ -64,7 +64,7 @@ app.get('/', (req, res) => {
     res.json({ success: true, message: 'Dayonsystem API Server is running.' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`========================================`);
     console.log(`  Dayonsystem API Server - MVC Refactored `);
     console.log(`  Port: ${PORT}`);
