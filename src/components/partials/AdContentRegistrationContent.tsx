@@ -307,7 +307,7 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                         <ToolbarBtn icon={<FileSpreadsheet size={16} />} label="엑셀(F7)" variant="success" onClick={() => {}} />
                         <ToolbarBtn icon={<Printer size={16} />} label="출력(F6)" variant="secondary" onClick={() => window.print()} />
                         <ToolbarBtn icon={<Save size={16} />} label="저장(F4)" variant="primary" onClick={handleSave} />
-                        <ToolbarBtn icon={<CloudUpload size={16} />} label="컨텐츠반영" variant="success" onClick={() => {}} />
+                        {/* <ToolbarBtn icon={<CloudUpload size={16} />} label="컨텐츠반영" variant="success" onClick={() => {}} /> */}
                         <ToolbarBtn icon={<Trash2 size={16} />} label="삭제(F8)" variant="danger" onClick={handleDeleteContent} />
                         <ToolbarBtn icon={<X size={16} />} label="창닫기" variant="danger" onClick={() => {}} />
                     </div>

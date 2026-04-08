@@ -30,6 +30,15 @@ const dbConfig = {
 
 let pool = null;
 
+// 특정 단말기 1시간 단위 누적용 메모리 (시리얼번호: 202525040349)
+const TARGET_DEVICE_SN = '202525040349';
+let accumulatedData = {
+    active: false,
+    timer: null,
+    maleIn: 0, maleOut: 0, femaleIn: 0, femaleOut: 0, totalIn: 0, totalOut: 0,
+    hostName: '', connectInfo: ''
+};
+
 app.use(express.json());
 
 function log(tag, msg) {
@@ -100,7 +109,54 @@ app.post('/', async (req, res) => {
 
         const connectInfo = rows[0].CONNECT_INFO || '';
 
-        // 2. STATISTICS에 즉시 INSERT
+        // 2. 특정 단말기인지 검사 (30초마다 오는 데이터를 1시간 동안 누적 후 저장)
+        if (deviceSn === TARGET_DEVICE_SN) {
+            accumulatedData.maleIn += maleIn;
+            accumulatedData.maleOut += maleOut;
+            accumulatedData.femaleIn += femaleIn;
+            accumulatedData.femaleOut += femaleOut;
+            accumulatedData.totalIn += totalIn;
+            accumulatedData.totalOut += totalOut;
+            
+            // 타이머가 작동 중이지 않다면 최초 데이터 수신 시 1시간 타이머 시작
+            if (!accumulatedData.active) {
+                accumulatedData.active = true;
+                accumulatedData.hostName = hostName;
+                accumulatedData.connectInfo = connectInfo;
+                
+                log('INFO', `[${TARGET_DEVICE_SN}] 타겟 단말기 데이터 수신 시작. 1시간 누적 타이머 작동됨.`);
+                
+                // 1시간(3600000ms) 후 DB에 저장 및 초기화
+                accumulatedData.timer = setTimeout(async () => {
+                    const insertSql = `
+                        INSERT INTO TCM_CCTV_STATISTICS 
+                        (CONNECT_INFO, HOSTNAME, DEVICE_SN, INSERT_DT, MALE_IN, MALE_OUT, FEMALE_IN, FEMALE_OUT, TOTAL_IN, TOTAL_OUT) 
+                        VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?, ?)
+                    `;
+                    try {
+                        await pool.query(insertSql, [
+                            accumulatedData.connectInfo, accumulatedData.hostName, TARGET_DEVICE_SN,
+                            accumulatedData.maleIn, accumulatedData.maleOut, accumulatedData.femaleIn, accumulatedData.femaleOut, accumulatedData.totalIn, accumulatedData.totalOut
+                        ]);
+                        log('STAT', `✓ [1시간 누적완료] ${accumulatedData.hostName} [${TARGET_DEVICE_SN}] DB 저장 완료 (누적 총입:${accumulatedData.totalIn} 총출:${accumulatedData.totalOut})`);
+                    } catch (err) {
+                        log('ERROR', `[${TARGET_DEVICE_SN}] 1시간 누적치 DB INSERT 실패: ${err.message}`);
+                    } finally {
+                        // 메모리 초기화
+                        accumulatedData.active = false;
+                        accumulatedData.timer = null;
+                        accumulatedData.maleIn = 0; accumulatedData.maleOut = 0;
+                        accumulatedData.femaleIn = 0; accumulatedData.femaleOut = 0;
+                        accumulatedData.totalIn = 0; accumulatedData.totalOut = 0;
+                    }
+                }, 60 * 60 * 1000); // 1시간 (60 * 60 * 1000)
+            }
+            // 누적 상황 로깅
+            log('DEBUG', `[${TARGET_DEVICE_SN}] 카운팅 누적중... 현재합계 (입:${accumulatedData.totalIn} 출:${accumulatedData.totalOut})`);
+            return;
+        }
+
+        // 3. 다른 단말기들은 수신 즉시 STATISTICS에 INSERT (기존 로직 유지)
         const sql = `
             INSERT INTO TCM_CCTV_STATISTICS 
             (CONNECT_INFO, HOSTNAME, DEVICE_SN, INSERT_DT, MALE_IN, MALE_OUT, FEMALE_IN, FEMALE_OUT, TOTAL_IN, TOTAL_OUT) 

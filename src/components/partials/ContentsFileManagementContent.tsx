@@ -344,7 +344,7 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                         <ToolbarBtn icon={<Printer size={16} />} label="출력(F6)" variant="secondary" onClick={() => window.print()} />
                         <ToolbarBtn icon={<Save size={16} />} label="저장(F4)" variant="primary" onClick={handleSave} />
                         <ToolbarBtn icon={<Trash2 size={16} />} label="삭제(F8)" variant="danger" onClick={handleDelete} />
-                        <ToolbarBtn icon={<CloudUpload size={16} />} label="컨텐츠반영" variant="success" onClick={() => alert('컨텐츠가 반영되었습니다.')} />
+                        {/* <ToolbarBtn icon={<CloudUpload size={16} />} label="컨텐츠반영" variant="success" onClick={() => alert('컨텐츠가 반영되었습니다.')} /> */}
                         <ToolbarBtn icon={<X size={16} />} label="창닫기" variant="danger" onClick={() => {}} />
                     </div>
                 </div>
@@ -373,9 +373,9 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                         onKeyDown={(e) => e.key === 'Enter' && fetchFiles()}
                     />
                 </div>
-                <div className="cfm-info-warning" style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--mgmt-warning)', fontWeight: 600 }}>
+                {/* <div className="cfm-info-warning" style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--mgmt-warning)', fontWeight: 600 }}>
                     ※ 사용중인 컨텐츠 파일 용량 : 407.40MB (컨트롤러 용량 : 2GB)
-                </div>
+                </div> */}
             </div>
 
             <div className="cfm-main-layout">

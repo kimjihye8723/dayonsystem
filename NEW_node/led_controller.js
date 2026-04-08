@@ -1,14 +1,17 @@
 /**
- * LED 전광판 통신 컨트롤러
+ * LED 전광판 통신 컨트롤러 v2.0
  * 
  * 기능:
  * 1. 광고 스케줄(TCM_VENDOR_SCH)에 따라 현재 시간대의 콘텐츠 목록을 조회
- * 2. 콘텐츠 파일(TCM_CONTENTS_FILE)을 LED 전광판에 HTTP URL 기반으로 송출
- * 3. CCTV 성별 카운트(TCM_CCTV)에 따라 실시간 콘텐츠 전환
- *    - 남성 체류 > 여성 → GENDER='M' 파일만
- *    - 여성 체류 > 남성 → GENDER='F' 파일만
- *    - 동일 또는 0 → 전체 순차 재생
- * 4. 장비(TCM_DEVICEINFO)의 CONNECT_INFO로 LED 전광판 TCP 연결
+ * 2. TCM_CONTENTS → TCM_CONTENTS_LIST → TCM_CONTENTS_FILE 체인으로 파일 정보 획득
+ * 3. GENDER IS NULL인 파일만 재생 목록에 포함
+ * 4. 프로그램 변경 시 기존 보드 파일 삭제(DeleteFiles SDK) 후 새 프로그램 송출
+ * 5. 장비(TCM_DEVICEINFO)의 CONNECT_INFO로 LED 전광판 TCP 연결
+ * 
+ * [추후 구현 예정] CCTV 성별 카운트(TCM_CCTV) 기반 실시간 콘텐츠 전환
+ *   - 남성 체류 > 여성 → GENDER='M' 파일만
+ *   - 여성 체류 > 남성 → GENDER='F' 파일만
+ *   - 동일 또는 0 → 전체 순차 재생
  * 
  * 실행: node led_controller.js
  */
@@ -41,7 +44,6 @@ const FILE_BASE_PATH = process.env.FILE_PATH || 'D:\\dayon_file';
 
 const FILE_SERVER_PORT = parseInt(process.env.FILE_SERVER_PORT || '9090', 10);
 const SCHEDULE_POLL_INTERVAL = 60000;   // 1분마다 스케줄 체크
-const GENDER_POLL_INTERVAL = 5000;      // 5초마다 상태 체크 (15초 사이클 대응)
 const PROGRAM_GUID = 'program-0';
 
 // ─────────────────────────────────────────────────────────────
@@ -110,7 +112,7 @@ function startFileServer() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Huidu LED Client (SDK 3.0 Protocol) - 최적화 이식
+// Huidu LED Client (SDK 3.0 Protocol)
 // ─────────────────────────────────────────────────────────────
 const LOCAL_TCP_VERSION = 0x1000007;
 const CMD = {
@@ -138,7 +140,6 @@ class HuiduLedClient {
         this._resolveVersion = null;
         this._resolveGuid = null;
         this._resolveSdkCmd = null;
-        this._resolveSdkQuery = null;
         this._currentProgramHash = null; // 동일 프로그램 재전송 방지
         this._isDownloading = false;     // LED가 파일 다운로드 중인지
     }
@@ -169,24 +170,40 @@ class HuiduLedClient {
     }
 
     /**
-     * 비디오 프로그램 전송 (콘텐츠 목록 업데이트)
-     * @param {Array} videoList - [{name, url, size, md5, duration}]
-     * @param {number} screenWidth
-     * @param {number} screenHeight
+     * 보드 내 파일 삭제 (DeleteFiles SDK 명령)
+     * @param {Array} fileUrls - 삭제할 파일 URL 배열 (AddProgram에서 보낸 name 값)
      */
-    async sendVideoProgram(videoList, screenWidth = 256, screenHeight = 256) {
+    async deleteFiles(fileUrls) {
+        if (!this.sdkReady || !fileUrls || fileUrls.length === 0) return;
+
+        try {
+            const fileTags = fileUrls.map(url => `<file name="${url}"/>`).join('');
+            const xml = `<?xml version="1.0" encoding="utf-8"?><sdk guid="${this.guid}"><in method="DeleteFiles"><files>${fileTags}</files></in></sdk>`;
+            
+            const result = await this._sendSdkCommand(xml, 30000);
+            log('LED', `[${this.name}] 🗑️ DeleteFiles 완료 (${fileUrls.length}개 파일)`);
+            return result;
+        } catch (err) {
+            // 삭제 실패해도 프로그램 전송은 계속 진행해야 하므로 에러만 로깅
+            logError('LED', `[${this.name}] DeleteFiles 실패: ${err.message}`);
+        }
+    }
+
+    /**
+     * 비디오 프로그램 전송 (콘텐츠 목록 업데이트)
+     * @param {Array} videoList - [{name, url, size, md5, duration, width, height, aspectRatio}]
+     * @param {number} screenWidth - DB(TCM_CONTENTS_FILE)에서 읽어온 SCREEN_WIDTH
+     * @param {number} screenHeight - DB(TCM_CONTENTS_FILE)에서 읽어온 SCREEN_HEIGHT
+     */
+    async sendVideoProgram(videoList, screenWidth, screenHeight) {
+        if (!screenWidth || !screenHeight) {
+            logError('LED', `[${this.name}] SCREEN_WIDTH 또는 SCREEN_HEIGHT 정보가 누락되었습니다.`);
+            return false;
+        }
         if (!this.sdkReady) {
             log('LED', `[${this.name}] SDK 미준비, 프로그램 전송 스킵`);
             return false;
         }
-
-        /* 
-        // LED가 파일 다운로드 중이면 방해하지 않음 (스킵 로직 비활성화 - 강제 전송 우선)
-        if (this._isDownloading) {
-            log('LED', `[${this.name}] 파일 다운로드 진행 중, 전송 스킵`);
-            return true;
-        }
-        */
 
         // 동일 프로그램 재전송 방지
         const hash = crypto.createHash('md5')
@@ -201,7 +218,7 @@ class HuiduLedClient {
             let videoTags = '';
             if (videoList.length > 0) {
                 videoTags = videoList.map((vid, idx) => 
-                    `<video guid="video-${idx}" aspectRatio="false"><file name="${vid.url}" size="${vid.size}" md5="${vid.md5}"/><playParams duration="${vid.duration || 20000}"/></video>`
+                    `<video guid="video-${idx}" aspectRatio="${vid.aspectRatio}"><file name="${vid.url}" size="${vid.size}" md5="${vid.md5}"/><playParams duration="${vid.duration || 20000}"/></video>`
                 ).join('');
             }
 
@@ -350,9 +367,9 @@ class HuiduLedClient {
         this.socket.write(packet);
     }
 
-    _sendSdkCommand(xmlString) {
+    _sendSdkCommand(xmlString, timeoutMs = 120000) {
         return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('SDK 명령 타임아웃')), 120000); // 2분 (파일 다운로드 시간 고려)
+            const timeout = setTimeout(() => reject(new Error('SDK 명령 타임아웃')), timeoutMs);
             this._resolveSdkCmd = (err, result) => {
                 clearTimeout(timeout);
                 this._resolveSdkCmd = null;
@@ -439,7 +456,9 @@ class ScheduleManager {
 
     /**
      * 특정 거래처(vendorCd)의 현재 시간대 콘텐츠 파일 목록을 조회
-     * @returns {Array} [{FILE_KEY, FILE_NAME, FTP_FILENAME, FILE_SIZE, FILE_MD5, GENDER, PLAY_SEQ, DELAY_TIME}]
+     * 테이블 체인: TCM_VENDOR_SCH → TCM_CONTENTS_LIST → TCM_CONTENTS_FILE
+     * GENDER IS NULL인 파일만 포함
+     * @returns {Array} [{FILE_KEY, FILE_NAME, FTP_FILENAME, FILE_SIZE, FILE_MD5, SCREEN_WIDTH, SCREEN_HEIGHT, ASPECTRATIO_YN, PLAY_SEQ, DELAY_TIME}]
      */
     async getScheduledFiles(vendorCd) {
         const now = new Date();
@@ -453,7 +472,7 @@ class ScheduleManager {
         const schColumn = `SCH_${String(currentHour).padStart(2, '0')}`;
 
         try {
-            // 1. 해당 요일/거래처의 전체 스케줄 조회
+            // 1. 해당 요일/거래처의 스케줄 조회
             const scheduleRows = await dbQuery(`
                 SELECT *
                 FROM TCM_VENDOR_SCH
@@ -468,7 +487,7 @@ class ScheduleManager {
 
             if (scheduleRows.length === 0) {
                 if (this._currentContentsKey !== null) {
-                    log('SCHEDULE', `[${vendorCd}] 등록된 스케줄이 전혀 없음`);
+                    log('SCHEDULE', `[${vendorCd}] 등록된 스케줄 없음`);
                 }
                 this._currentContentsKey = null;
                 this._currentFileList = [];
@@ -476,47 +495,29 @@ class ScheduleManager {
             }
 
             const row = scheduleRows[0];
-            let contentsKey = row[schColumn];
-            let targetHour = currentHour;
+            const contentsKey = row[schColumn];
 
-            // 현재 시간이 비어있으면 가장 가까운 시간대 찾기
+            // 현재 시간대에 콘텐츠가 없으면 재생하지 않음
             if (!contentsKey || contentsKey === '') {
-                let minDistance = 25;
-                for (let h = 0; h < 24; h++) {
-                    const hCol = `SCH_${String(h).padStart(2, '0')}`;
-                    if (row[hCol] && row[hCol] !== '') {
-                        const dist = Math.abs(h - currentHour);
-                        if (dist < minDistance) {
-                            minDistance = dist;
-                            targetHour = h;
-                            contentsKey = row[hCol];
-                        }
-                    }
-                }
-                
-                if (contentsKey) {
-                    log('SCHEDULE', `[${vendorCd}] ${currentHour}시 비어있음 → 가장 가까운 ${targetHour}시 스케줄로 대체`);
-                }
-            }
-
-            if (!contentsKey) {
+                log('SCHEDULE', `[${vendorCd}] ${currentHour}시 스케줄 비어있음 → 재생 없음`);
                 this._currentContentsKey = null;
                 this._currentFileList = [];
                 return [];
             }
 
-            // 시간이 바뀌거나 콘텐츠가 변경된 경우에만 파일 목록 갱신 (단, 기존 목록이 비어있으면 재조회)
+            // 시간이 바뀌거나 콘텐츠가 변경된 경우에만 파일 목록 갱신 (기존 목록이 비어있으면 재조회)
             if (currentHour === this._lastHour && contentsKey === this._currentContentsKey && this._currentFileList.length > 0) {
                 return this._currentFileList;
             }
 
             // 2. CONTENTS_KEY → TCM_CONTENTS_LIST → TCM_CONTENTS_FILE 체인 조회
-            log('SCHEDULE', `[${vendorCd}] CONTENTS_KEY=${contentsKey} → 파일 목록 조회 중 (CORP_CD=${CORP_CD})`);
+            //    GENDER IS NULL인 파일만 포함
+            log('SCHEDULE', `[${vendorCd}] CONTENTS_KEY=${contentsKey} → 파일 목록 조회 중 (GENDER IS NULL만)`);
             const fileRows = await dbQuery(`
                 SELECT 
                     F.FILE_KEY, F.FILE_NAME, F.FTP_FILENAME, F.FILE_TITLE,
-                    F.FILE_SIZE, F.FILE_MD5, F.GENDER,
-                    F.SCREEN_WIDTH, F.SCREEN_HEIGHT,
+                    F.FILE_SIZE, F.FILE_MD5,
+                    F.SCREEN_WIDTH, F.SCREEN_HEIGHT, F.ASPECTRATIO_YN,
                     L.DISP_SEQ AS PLAY_SEQ, L.IMAGE_DELAY AS DELAY_TIME,
                     L.USE_YN
                 FROM TCM_CONTENTS_LIST L
@@ -525,6 +526,7 @@ class ScheduleManager {
                   AND L.CONTENTS_KEY = ?
                   AND L.USE_YN = 'Y'
                   AND F.USE_YN = 'Y'
+                  AND (F.GENDER IS NULL OR F.GENDER = '')
                 ORDER BY L.DISP_SEQ ASC
             `, [CORP_CD, contentsKey]);
 
@@ -535,10 +537,10 @@ class ScheduleManager {
             if (fileRows.length > 0) {
                 log('SCHEDULE', `[${vendorCd}] ${currentHour}시 콘텐츠(${contentsKey}) → ${fileRows.length}개 파일 로드`);
                 fileRows.forEach((f, i) => {
-                    log('SCHEDULE', `  ${i + 1}. ${f.FILE_NAME} (GENDER:${f.GENDER || 'null'})`);
+                    log('SCHEDULE', `  ${i + 1}. ${f.FILE_NAME} (${f.SCREEN_WIDTH}x${f.SCREEN_HEIGHT})`);
                 });
             } else {
-                log('WARN', `[${vendorCd}] CONTENTS_KEY=${contentsKey}에 해당하는 유효한 파일이 없습니다. (USE_YN 확인 필요)`);
+                log('WARN', `[${vendorCd}] CONTENTS_KEY=${contentsKey}에 해당하는 유효한 파일이 없습니다.`);
             }
 
             return fileRows;
@@ -556,84 +558,13 @@ class ScheduleManager {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Gender Filter
-// ─────────────────────────────────────────────────────────────
-
-class GenderFilter {
-    constructor() {
-        this._lastGenderState = null; // 'M' | 'F' | 'ALL'
-    }
-
-    /**
-     * CCTV 성별 데이터를 조회하여 현재 성별 상태를 반환
-     * @param {string} vendorCd 거래처 코드
-     * @returns {{ state: 'M'|'F'|'ALL', maleStay: number, femaleStay: number, changed: boolean }}
-     */
-    async checkGender(vendorCd) {
-        try {
-            const rows = await dbQuery(`
-                SELECT 
-                    IFNULL(SUM(NOW_MALE_IN), 0) - IFNULL(SUM(NOW_MALE_OUT), 0) AS maleStay,
-                    IFNULL(SUM(NOW_FEMALE_IN), 0) - IFNULL(SUM(NOW_FEMALE_OUT), 0) AS femaleStay
-                FROM TCM_CCTV
-                WHERE CORP_CD = ? AND USE_YN = 'Y' AND USE_VENDOR = ?
-            `, [CORP_CD, vendorCd]);
-
-            const maleStay = Math.max(0, rows[0]?.maleStay || 0);
-            const femaleStay = Math.max(0, rows[0]?.femaleStay || 0);
-
-            let state;
-            if (maleStay === 0 && femaleStay === 0) {
-                state = 'ALL';
-            } else if (maleStay > femaleStay) {
-                state = 'M';
-            } else if (femaleStay > maleStay) {
-                state = 'F';
-            } else {
-                state = 'ALL';
-            }
-
-            const changed = (state !== this._lastGenderState);
-            if (changed && this._lastGenderState !== null) {
-                log('GENDER', `성별 상태 변경: ${this._lastGenderState} → ${state} (남:${maleStay} 여:${femaleStay})`);
-            }
-            this._lastGenderState = state;
-
-            return { state, maleStay, femaleStay, changed };
-        } catch (err) {
-            logError('GENDER', `성별 조회 실패: ${err.message}`);
-            return { state: this._lastGenderState || 'ALL', maleStay: 0, femaleStay: 0, changed: false };
-        }
-    }
-
-    /**
-     * 상태에 따라 파일 목록 필터링
-     * @param {Array} files 전체 파일 목록
-     * @param {'M'|'F'|'NORMAL'|'ALL_GENDER'} state 필터링 상태
-     * @returns {Array} 필터링된 파일 목록
-     */
-    filterFiles(files, state) {
-        if (state === 'NORMAL') {
-            // 젠더 컬럼이 null이거나 비어있는 것만 목록화
-            return files.filter(f => !f.GENDER || f.GENDER === '' || f.GENDER === 'null');
-        } else if (state === 'ALL_GENDER') {
-            // 성별이 지정된 모든 파일 (M 또는 F)
-            return files.filter(f => f.GENDER === 'M' || f.GENDER === 'F');
-        } else {
-            // 젠더 M이면 남자목록, F면 여자목록 (엄격하게 필터링)
-            return files.filter(f => f.GENDER === state);
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────
 // Main Controller
 // ─────────────────────────────────────────────────────────────
 
 async function main() {
     console.log('═══════════════════════════════════════════════════════════');
-    console.log('  LED 전광판 통신 컨트롤러 v1.0');
-    console.log('  CMS 광고 스케줄 기반 콘텐츠 송출 + CCTV 성별 필터링');
+    console.log('  LED 전광판 통신 컨트롤러 v2.0');
+    console.log('  CMS 광고 스케줄 기반 콘텐츠 송출');
     console.log('═══════════════════════════════════════════════════════════');
     console.log();
 
@@ -676,7 +607,7 @@ async function main() {
     });
     console.log();
 
-    // 3. 거래처별 LED 클라이언트 + 스케줄 매니저 + 성별 필터 생성
+    // 3. 거래처별 LED 클라이언트 + 스케줄 매니저 생성
     const controllers = targetVendors.map(vendor => {
         // CONNECT_INFO 파싱 (http://host:port 또는 host:port 형식 모두 지원)
         let ledIp, ledPort;
@@ -699,7 +630,6 @@ async function main() {
 
         const ledClient = new HuiduLedClient(ledIp, ledPort, vendor.VENDOR_NM);
         const scheduler = new ScheduleManager();
-        const genderFilter = new GenderFilter();
 
         return {
             vendorCd: vendor.VENDOR_CD,
@@ -708,20 +638,15 @@ async function main() {
             connectInfo: vendor.CONNECT_INFO,
             ledClient,
             scheduler,
-            genderFilter,
-            
-            // 재생 제어 상태
-            cycleCount: 0,           
-            playbackMode: 'NORMAL',   // 'NORMAL' (3분) <-> 'GENDER' (20초)
-            nextCycleTime: 0,        
-            lastSentHash: null       
+            lastSentHash: null,
+            previousFileUrls: [],   // 이전에 보드로 보낸 파일 URL 목록 (삭제용 추적)
         };
     });
 
     // 4. 모든 LED 클라이언트 연결 시작
     controllers.forEach(c => c.ledClient.start());
 
-    // 5. 파일을 비디오 URL 목록으로 변환 (비동기 처리로 블로킹 방지)
+    // 5. 파일 메타데이터 캐시 및 변환 유틸리티
     const fileMetaCache = {}; // { filename: { size, md5, mtime } }
 
     async function getFileMeta(filename, filePath) {
@@ -770,109 +695,75 @@ async function main() {
                 url,
                 size: meta.size,
                 md5: meta.md5,
-                duration: (f.DELAY_TIME || 20) * 1000 // 초 → 밀리초
+                duration: (f.DELAY_TIME || 20) * 1000, // 초 → 밀리초
+                width: f.SCREEN_WIDTH,
+                height: f.SCREEN_HEIGHT,
+                aspectRatio: f.ASPECTRATIO_YN === 'Y' ? 'true' : 'false'
             });
         }
         return videoList;
     }
 
-    // 6. 개별 컨트롤러 업데이트 함수 (180초/15초 고정 주기 교대 재생)
-    const CYCLE_NORMAL_MS = 180 * 1000; // 정상영상 180초
-    const CYCLE_GENDER_MS = 15 * 1000;  // 성별영상 15초
-
-    async function updateController(ctrl, forceUpdate = false) {
+    // 6. 개별 컨트롤러 업데이트 함수
+    async function updateController(ctrl) {
         if (!ctrl.ledClient.isReady()) return;
 
-        const now = Date.now();
-        
-        // 1. 아직 현재 주기가 끝나지 않았으면 스킵
-        if (!forceUpdate && now < ctrl.nextCycleTime) {
-            return;
-        }
-
         try {
-            // [상태 전환] 주기가 지났으며, 재생할 파일이 있었을 경우에만 모드 교체
-            if (!forceUpdate && ctrl.nextCycleTime > 0 && ctrl.lastSentHash) {
-                const oldMode = ctrl.playbackMode;
-                ctrl.playbackMode = (oldMode === 'NORMAL') ? 'GENDER' : 'NORMAL';
-                log('CTRL', `[${ctrl.vendorNm}] 주기 종료 → 모드 전환 시도: ${oldMode} → ${ctrl.playbackMode}`);
-            }
+            // 1. 현재 시간대 스케줄 파일 목록 조회 (GENDER IS NULL만)
+            const files = await ctrl.scheduler.getScheduledFiles(ctrl.vendorCd);
+            if (files.length === 0) return;
 
-            // 2. 현재 시간대(또는 가까운 시간대) 스케줄 확보
-            const allFiles = await ctrl.scheduler.getScheduledFiles(ctrl.vendorCd);
-            if (allFiles.length === 0) {
-                log('WARN', `[${ctrl.vendorNm}] 재생할 스케줄이 없습니다. (10초 후 재시도)`);
-                ctrl.nextCycleTime = now + 10000;
-                return;
-            }
-
-            // 3. 모드에 따른 필터링 적용
-            let filteredFiles = [];
-            let currentTarget = 'NORMAL';
-
-            if (ctrl.playbackMode === 'GENDER') {
-                const gender = await ctrl.genderFilter.checkGender(ctrl.vendorCd);
-                if (gender.state === 'ALL') {
-                    currentTarget = 'ALL_GENDER';
-                } else {
-                    currentTarget = gender.state;
-                }
-                filteredFiles = ctrl.genderFilter.filterFiles(allFiles, currentTarget);
-                
-                // 만약 성별 영상이 하나도 없다면, 정상영상 모드로 즉시 복구 (타이머도 정상 주기로 설정됨)
-                if (filteredFiles.length === 0) {
-                    log('CTRL', `[${ctrl.vendorNm}] [${currentTarget}] 영상 없음 → 정상영상으로 즉시 복귀`);
-                    ctrl.playbackMode = 'NORMAL';
-                }
-            }
-            
-            if (ctrl.playbackMode === 'NORMAL') {
-                currentTarget = 'NORMAL';
-                filteredFiles = ctrl.genderFilter.filterFiles(allFiles, 'NORMAL');
-            }
-
-            // 최종 재생 시간 결정 (복귀한 모드 기준)
-            const currentStepMs = (ctrl.playbackMode === 'NORMAL') ? CYCLE_NORMAL_MS : CYCLE_GENDER_MS;
-
-            // 4. 비디오 목록 생성 (필터링된 결과물)
-            const videoList = await filesToVideoList(filteredFiles);
+            // 2. 비디오 목록 생성
+            const videoList = await filesToVideoList(files);
             if (videoList.length === 0) {
-                log('WARN', `[${ctrl.vendorNm}] 송출할 대상 영상(파일)이 없습니다. (10초 후 재시도)`);
-                ctrl.nextCycleTime = now + 10000;
+                log('WARN', `[${ctrl.vendorNm}] 송출할 대상 영상(파일)이 없습니다.`);
                 return;
             }
 
-            // 5. 변경 사항 확인 (모드 + 영상 목록 해시)
+            // 3. 변경 여부 확인 (동일 프로그램 재전송 방지)
             const programHash = crypto.createHash('md5')
-                .update(JSON.stringify(videoList.map(v => v.url)) + ctrl.playbackMode)
+                .update(JSON.stringify(videoList.map(v => v.url)))
                 .digest('hex');
             
-            if (programHash === ctrl.lastSentHash && !forceUpdate) {
-                // 변경 사항이 없더라도 타이머는 주기만큼 갱신
-                ctrl.nextCycleTime = now + currentStepMs;
-                return;
+            if (programHash === ctrl.lastSentHash) {
+                return; // 변경 없음 → 스킵
             }
 
-            // 6. LED 전송 (여기서 딱 한 번만 명령이 나감)
-            const modeDesc = (ctrl.playbackMode === 'GENDER') ? `성별타겟(${currentTarget})` : '정상영상(GENDER NULL)';
-            log('CTRL', `[${ctrl.vendorNm}] === ${modeDesc} 송출 시작 (파일: ${filteredFiles.length}개, ${currentStepMs/1000}초 유지) ===`);
-            
-            ctrl.nextCycleTime = now + currentStepMs;
-            ctrl.lastSentHash = programHash;
-            
-            // LED 클라이언트 상태 초기화 후 전송
+            log('CTRL', `[${ctrl.vendorNm}] === 프로그램 변경 감지 → 송출 시작 (${videoList.length}개 파일) ===`);
+
+            // 4. 기존 보드 파일 삭제 (이전에 전송했던 파일 중, 새 목록에 없는 것만 삭제)
+            if (ctrl.previousFileUrls.length > 0) {
+                const newFileUrls = new Set(videoList.map(v => v.url));
+                const toDelete = ctrl.previousFileUrls.filter(url => !newFileUrls.has(url));
+                
+                if (toDelete.length > 0) {
+                    log('CTRL', `[${ctrl.vendorNm}] 🗑️ 불필요 파일 ${toDelete.length}개 삭제 중...`);
+                    await ctrl.ledClient.deleteFiles(toDelete);
+                } else {
+                    log('CTRL', `[${ctrl.vendorNm}] 기존 파일 전부 재사용 → 삭제 스킵`);
+                }
+            }
+
+            // 5. 새 프로그램 송출
+            const screenWidth = videoList[0].width;
+            const screenHeight = videoList[0].height;
+
             ctrl.ledClient.resetProgramHash();
-            const result = await ctrl.ledClient.sendVideoProgram(videoList);
-            log('LED', `[${ctrl.vendorNm}] 전송 결과: ${result}`);
+            const result = await ctrl.ledClient.sendVideoProgram(videoList, screenWidth, screenHeight);
+            
+            if (result) {
+                ctrl.lastSentHash = programHash;
+                ctrl.previousFileUrls = videoList.map(v => v.url);
+                log('CTRL', `[${ctrl.vendorNm}] ✅ 송출 완료`);
+            }
 
         } catch (err) {
             logError('CTRL', `[${ctrl.vendorNm}] 업데이트 에러: ${err.message}`);
-            ctrl.nextCycleTime = now + 10000; 
         }
     }
 
-    // 7. 폴링 통합 (10초마다 체크)
-    log('MAIN', `통합 폴링 시작 (10초 간격 - 교대 재생 제어)`);
+    // 7. 스케줄 폴링 (1분 간격)
+    log('MAIN', `스케줄 폴링 시작 (${SCHEDULE_POLL_INTERVAL / 1000}초 간격)`);
     let isPolling = false;
     setInterval(async () => {
         if (isPolling) return;
@@ -884,9 +775,9 @@ async function main() {
         } finally {
             isPolling = false;
         }
-    }, GENDER_POLL_INTERVAL);
+    }, SCHEDULE_POLL_INTERVAL);
 
-    // 9. 초기 실행 (5초 후, LED 연결 대기)
+    // 8. 초기 실행 (5초 후, LED 연결 대기)
     setTimeout(async () => {
         log('MAIN', '초기 콘텐츠 로드 시작...');
         for (const ctrl of controllers) {
@@ -894,7 +785,7 @@ async function main() {
         }
     }, 5000);
 
-    // 10. Graceful shutdown
+    // 9. Graceful shutdown
     process.on('SIGINT', () => {
         log('MAIN', '종료 중...');
         controllers.forEach(c => c.ledClient.stop());
