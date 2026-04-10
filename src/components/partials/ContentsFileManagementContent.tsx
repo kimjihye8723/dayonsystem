@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, CloudUpload, FileVideo, Plus } from 'lucide-react';
+import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, FileVideo, Plus } from 'lucide-react';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
 import SparkMD5 from 'spark-md5';
@@ -128,10 +128,8 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
         try {
             const res = await axios.post('/api/contents-files/save', editedList);
             if (res.data.success) {
-                setEditingFiles({});
                 alert('변경사항이 저장되었습니다.');
-                fetchFiles();
-                fetchDates();
+                window.location.reload();
             }
         } catch (err) {
             console.error('Save error:', err);
@@ -152,13 +150,8 @@ const ContentsFileManagementContent: React.FC<Props> = ({ theme }) => {
                 data: { fileKeys: Array.from(selectedRows) }
             });
             if (res.data.success) {
-                // Optimistic UI updates
-                setFiles(prev => prev.filter(f => !selectedRows.has(f.FILE_KEY)));
-                setSelectedRows(new Set());
-                
                 alert('삭제되었습니다.');
-                fetchFiles();
-                fetchDates();
+                window.location.reload();
             }
         } catch (err) {
             console.error('Delete error:', err);

@@ -2,9 +2,9 @@ const express = require('express');
 require('dotenv').config();
 
 const app = express();
-const PORT = 2015;
+const PORT = 2016;
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
 // 모든 실시간 푸시 데이터 수신 및 출력 (RAW 로그 전용)
 app.post('/', (req, res) => {

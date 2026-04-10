@@ -63,6 +63,11 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
     const [selectedTemplateKey, setSelectedTemplateKey] = useState('');
     const [loading, setLoading] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
+
+    // 컨텐츠 즉시 반영 모달
+    const [isContentPushModalOpen, setIsContentPushModalOpen] = useState(false);
+    const [selectedPushContentId, setSelectedPushContentId] = useState('');
+    const [pushLoading, setPushLoading] = useState(false);
     const [gridData, setGridData] = useState<GridRow[]>(
         DAYS.map(day => {
             const row: any = { DAY_SEC: day.id, DAY_NM: day.name };
@@ -163,8 +168,7 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
             });
             if (res.data.success) {
                 alert('스케쥴이 저장되었습니다.');
-                setIsCreating(false);
-                fetchSchedules();
+                window.location.reload();
             }
         } catch (e) {
             alert('저장 중 오류가 발생했습니다.');
@@ -202,19 +206,8 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
                     data: { scheduleKey: selectedSchedule.SCHEDULE_KEY }
                 });
                 if (res.data.success) {
-                    // Optimistic update
-                    setSchedules(prev => prev.filter(s => s.SCHEDULE_KEY !== selectedSchedule.SCHEDULE_KEY));
-                    setSelectedSchedule(null);
-                    setGridData(DAYS.map(day => {
-                        const row: any = { DAY_SEC: day.id, DAY_NM: day.name };
-                        HOURS.forEach(h => row[`SCH_${h}`] = '');
-                        return row;
-                    }));
-                    setSelectedVendorCodes([]);
-                    setDisplayedVendors([]);
-                    
                     alert('삭제되었습니다.');
-                    fetchSchedules();
+                    window.location.reload();
                 }
             } catch (e: any) {
                 console.error('Delete schedule error:', e);
@@ -312,7 +305,14 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
                         <ToolbarBtn icon={<FileSpreadsheet size={16} />} label="엑셀(F7)" variant="success" onClick={() => { }} />
                         <ToolbarBtn icon={<Printer size={16} />} label="출력(F6)" variant="secondary" onClick={() => window.print()} />
                         <ToolbarBtn icon={<Save size={16} />} label="저장(F4)" variant="primary" onClick={handleSave} />
-                        {/* <ToolbarBtn icon={<FileCheck size={16} />} label="컨텐츠반영" variant="success" onClick={() => alert('컨텐츠 반영 기능은 현재 준비 중입니다.')} /> */}
+                        <ToolbarBtn icon={<FileCheck size={16} />} label="컨텐츠반영" variant="success" onClick={() => {
+                            if (selectedVendorCodes.length === 0) {
+                                alert('점포를 선택하세요.');
+                                return;
+                            }
+                            setSelectedPushContentId('');
+                            setIsContentPushModalOpen(true);
+                        }} />
                         <ToolbarBtn icon={<Trash2 size={16} />} label="삭제(F8)" variant="danger" onClick={handleDelete} />
                         <ToolbarBtn icon={<X size={16} />} label="창닫기" variant="danger" onClick={() => { }} />
                     </div>
@@ -537,6 +537,88 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
                     )}
                 </div>
             </div>
+
+            {/* 컨텐츠 즉시 반영 모달 */}
+            {isContentPushModalOpen && (
+                <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div className="mgmt-card" style={{ width: '600px', maxHeight: '70vh', display: 'flex', flexDirection: 'column', backgroundColor: theme === 'dark' ? '#1e1e2d' : '#ffffff', boxShadow: '0px 10px 40px rgba(0,0,0,0.5)' }}>
+                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--mgmt-glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ margin: 0, color: 'var(--text-main)' }}>광고 콘텐츠 즉시 반영</h3>
+                            <button className="mgmt-toolbar-btn" onClick={() => setIsContentPushModalOpen(false)}><X size={16} /></button>
+                        </div>
+                        <div style={{ padding: '0.75rem 1rem', background: 'var(--table-header)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                            선택한 {selectedVendorCodes.length}개 점포의 LED 장비에 선택한 콘텐츠를 즉시 송출합니다.
+                        </div>
+                        <div style={{ flex: 1, padding: '0.5rem 1rem', overflowY: 'auto' }}>
+                            <div className="mgmt-table-wrapper">
+                                <table className="mgmt-table">
+                                    <thead>
+                                        <tr>
+                                            <th style={{ width: '40px' }} className="text-center">선택</th>
+                                            <th>콘텐츠 제목</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {contents.map(c => (
+                                            <tr 
+                                                key={c.CONTENTS_ID} 
+                                                onClick={() => setSelectedPushContentId(c.CONTENTS_ID)}
+                                                className={selectedPushContentId === c.CONTENTS_ID ? 'selected' : ''}
+                                                style={{ cursor: 'pointer' }}
+                                            >
+                                                <td className="text-center">
+                                                    <input type="radio" name="pushContent" checked={selectedPushContentId === c.CONTENTS_ID} readOnly />
+                                                </td>
+                                                <td>{c.TITLE}</td>
+                                            </tr>
+                                        ))}
+                                        {contents.length === 0 && (
+                                            <tr><td colSpan={2} className="text-center" style={{ padding: '30px', color: 'var(--text-muted)' }}>등록된 콘텐츠가 없습니다.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div style={{ padding: '1rem', borderTop: '1px solid var(--mgmt-glass-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                            <button className="mgmt-toolbar-btn mgmt-btn-secondary" onClick={() => setIsContentPushModalOpen(false)}>취소</button>
+                            <button 
+                                className="mgmt-toolbar-btn mgmt-btn-success" 
+                                disabled={pushLoading}
+                                onClick={async () => {
+                                    if (!selectedPushContentId) {
+                                        alert('송출할 콘텐츠를 선택해주세요.');
+                                        return;
+                                    }
+                                    const selectedTitle = contents.find(c => c.CONTENTS_ID === selectedPushContentId)?.TITLE || '';
+                                    if (!window.confirm(`"${selectedTitle}" 콘텐츠를 ${selectedVendorCodes.length}개 점포에 즉시 송출하시겠습니까?`)) return;
+
+                                    setPushLoading(true);
+                                    try {
+                                        const res = await axios.post('/api/led/push-content', {
+                                            vendorCodes: selectedVendorCodes,
+                                            contentsId: selectedPushContentId
+                                        });
+                                        if (res.data.success) {
+                                            const details = (res.data.results || []).map((r: any) => `${r.vendorNm}: ${r.message}`).join('\n');
+                                            alert(`${res.data.message}\n\n${details}`);
+                                        } else {
+                                            alert('송출 실패: ' + res.data.message);
+                                        }
+                                    } catch (err: any) {
+                                        console.error('Push content error:', err);
+                                        alert('송출 중 오류 발생: ' + (err.response?.data?.message || err.message));
+                                    } finally {
+                                        setPushLoading(false);
+                                        setIsContentPushModalOpen(false);
+                                    }
+                                }}
+                            >
+                                {pushLoading ? '송출 중...' : '즉시 반영'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

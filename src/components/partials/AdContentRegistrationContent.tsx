@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, CloudUpload, Film, Plus } from 'lucide-react';
+import { RefreshCw, Search, FileSpreadsheet, Printer, Save, Trash2, X, Film, Plus } from 'lucide-react';
 import axios from 'axios';
 import '../../styles/partials/AdContentRegistrationContent.css';
 
@@ -141,8 +141,7 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
             });
             if (res.data.success) {
                 alert('정상적으로 저장되었습니다.');
-                fetchContents();
-                fetchFiles(selectedContent);
+                window.location.reload();
             }
         } catch (err: any) {
             console.error('Save error:', err);
@@ -184,13 +183,8 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
             setLoading(true);
             const res = await axios.delete('/api/ad-contents', { data: { contentIds: [selectedContent.CONTENTS_ID] } });
             if (res.data.success) {
-                // Optimistic UI updating
-                setContents(prev => prev.filter(c => c.CONTENTS_ID !== selectedContent.CONTENTS_ID));
-                setSelectedContent(null);
-                setFiles([]);
-                
                 alert('삭제되었습니다.');
-                fetchContents();
+                window.location.reload();
             }
         } catch (err: any) {
             console.error('Delete error:', err);
@@ -239,7 +233,8 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
             EFFECT_OUT: '',
             FILE_SIZE: f.FILE_SIZE,
             FILE_MD5: f.FILE_MD5,
-            REMARK: f.REMARK || ''
+            REMARK: f.REMARK || '',
+            GENDER: f.GENDER || ''
         }));
         
         const safeMerged = [...files];
@@ -450,7 +445,7 @@ const AdContentRegistrationContent: React.FC<Props> = ({ theme }) => {
                                     <th style={{ width: '80px' }}>성별</th>
                                     <th style={{ width: '60px' }}>사용유무</th>
                                     <th style={{ width: '60px' }}>재생순서</th>
-                                    <th style={{ width: '120px' }}>딜레이타임(이미지)</th>
+                                    <th style={{ width: '120px' }}>송출 시간</th>
                                     <th style={{ width: '80px' }}>효과(IN)</th>
                                     <th style={{ width: '80px' }}>효과(OUT)</th>
                                     <th style={{ width: '80px' }}>파일사이즈</th>
