@@ -292,7 +292,7 @@ class HuiduLedClient {
                 const makeProgram = (progGuid, list, isHidden = false) => {
                     if (!list || list.length === 0) return '';
                     const tags = makeTags(list, progGuid);
-                    const playCount = 99999;
+                    const playCount = isHidden ? 1 : 99999;
                     return `<program guid="${progGuid}" type="normal"><playControl count="${playCount}"/><area guid="area-${progGuid}" alpha="255"><rectangle x="0" y="0" width="${screenWidth}" height="${screenHeight}"/><resources>${tags}</resources></area></program>`;
                 };
 
@@ -312,13 +312,16 @@ class HuiduLedClient {
                     });
                 }
 
+                // 만약 남/여 채널이 재생 후 다음 영상으로 자연스럽게 넘어갈 경우를 대비해,
+                // 리스트의 맨 마지막에 기본 채널을 한 번 더 배치합니다 (안전장치).
+                const progNullFallback = makeProgram('prog_null_fallback', nullList, false);
+
                 // AddProgram 전에 보드에 남은 구(舊) 프로그램 정리
                 await this.deleteOldPrograms();
 
-                // 순서: prog_null(count=99999, 기본) → prog_male → prog_female
-                // AddProgram 후 즉시 switchProgram('prog_null')로 기본 채널 강제 시작
+                // 순서: prog_null(기본) → 남성영상들 → 여성영상들 → prog_null_fallback(안전장치)
                 let xml = `<?xml version="1.0" encoding="utf-8"?><sdk guid="${this.guid}"><in method="AddProgram"><screen timeStamps="${Date.now()}">`;
-                xml += progNull + progMaleXml + progFemaleXml;
+                xml += progNull + progMaleXml + progFemaleXml + progNullFallback;
                 xml += `</screen></in></sdk>`;
 
                 const result = await this._sendSdkCommand(xml);
