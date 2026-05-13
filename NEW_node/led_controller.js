@@ -293,7 +293,10 @@ class HuiduLedClient {
                     if (!list || list.length === 0) return '';
                     const tags = makeTags(list, progGuid);
                     const playCount = isHidden ? 1 : 99999;
-                    return `<program guid="${progGuid}" type="normal"><playControl count="${playCount}"/><area guid="area-${progGuid}" alpha="255"><rectangle x="0" y="0" width="${screenWidth}" height="${screenHeight}"/><resources>${tags}</resources></area></program>`;
+                    // disabled="true": 남성/여성 채널은 자동 순환 재생 방지
+                    // SwitchProgram으로만 강제 재생 가능, 재생 후 자동으로 prog_null로 복귀
+                    const disabledAttr = isHidden ? ' disabled="true"' : '';
+                    return `<program guid="${progGuid}" type="normal"><playControl count="${playCount}"${disabledAttr}/><area guid="area-${progGuid}" alpha="255"><rectangle x="0" y="0" width="${screenWidth}" height="${screenHeight}"/><resources>${tags}</resources></area></program>`;
                 };
 
                 const progNull = makeProgram('prog_null', nullList);
