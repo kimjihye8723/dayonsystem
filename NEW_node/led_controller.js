@@ -766,53 +766,63 @@ async function main() {
             // 3. 각 점포별 LED에 송출
             const results = [];
             for (const vendorCd of vendorCodes) {
-                const ctrl = controllers.find(c => c.vendorCd === vendorCd);
-                if (!ctrl) {
+                const vendorControllers = controllers.filter(c => c.vendorCd === vendorCd);
+                if (vendorControllers.length === 0) {
                     results.push({ vendorCd, vendorNm: vendorCd, status: 'NOT_FOUND', message: '등록된 LED 장비 없음' });
                     continue;
                 }
 
-                if (!ctrl.ledClient.isReady()) {
-                    results.push({ vendorCd, vendorNm: ctrl.vendorNm, status: 'NOT_CONNECTED', message: 'LED 장비 연결 안됨' });
-                    continue;
+                let vendorSuccess = false;
+                let vendorError = null;
+                const vendorNm = vendorControllers[0].vendorNm;
+
+                for (const ctrl of vendorControllers) {
+                    if (!ctrl.ledClient.isReady()) {
+                        logError('PUSH-API', `[${ctrl.vendorNm}] 장비 미연결: ${ctrl.deviceId || '알수없음'}`);
+                        continue;
+                    }
+
+                    try {
+                        const allCurrentUrls = [...mainVideoList, ...cacheVideoList].map(v => v.url);
+
+                        // 기존 파일 삭제 (새 목록에 없는 것만)
+                        if (ctrl.previousFileUrls.length > 0) {
+                            const newFileUrls = new Set(allCurrentUrls);
+                            const toDelete = ctrl.previousFileUrls.filter(url => !newFileUrls.has(url));
+                            if (toDelete.length > 0) {
+                                log('PUSH-API', `[${ctrl.vendorNm}] 불필요 파일 ${toDelete.length}개 삭제`);
+                                await ctrl.ledClient.deleteFiles(toDelete);
+                            }
+                        }
+
+                        // 프로그램 송출 (다중 프로그램 적재)
+                        const screenWidth = mainVideoList[0]?.width || 128;
+                        const screenHeight = mainVideoList[0]?.height || 64;
+                        ctrl.ledClient.resetProgramHash();
+
+                        const maleFiles = fileRows.filter(f => f.GENDER === 'M');
+                        const femaleFiles = fileRows.filter(f => f.GENDER === 'F');
+                        const maleVideoList = await filesToVideoList(maleFiles);
+                        const femaleVideoList = await filesToVideoList(femaleFiles);
+
+                        const ok = await ctrl.ledClient.sendMultiplePrograms(mainVideoList, maleVideoList, femaleVideoList, screenWidth, screenHeight);
+
+                        if (ok) {
+                            ctrl.previousFileUrls = allCurrentUrls;
+                            ctrl.lastSentHash = crypto.createHash('md5').update(JSON.stringify(allCurrentUrls)).digest('hex');
+                            log('PUSH-API', `[${ctrl.vendorNm} - ${ctrl.deviceId || '알수없음'}] ✅ 즉시 반영 성공`);
+                            vendorSuccess = true;
+                        }
+                    } catch (err) {
+                        logError('PUSH-API', `[${ctrl.vendorNm} - ${ctrl.deviceId || '알수없음'}] 송출 에러: ${err.message}`);
+                        vendorError = err.message;
+                    }
                 }
 
-                try {
-                    const allCurrentUrls = [...mainVideoList, ...cacheVideoList].map(v => v.url);
-
-                    // 기존 파일 삭제 (새 목록에 없는 것만)
-                    if (ctrl.previousFileUrls.length > 0) {
-                        const newFileUrls = new Set(allCurrentUrls);
-                        const toDelete = ctrl.previousFileUrls.filter(url => !newFileUrls.has(url));
-                        if (toDelete.length > 0) {
-                            log('PUSH-API', `[${ctrl.vendorNm}] 불필요 파일 ${toDelete.length}개 삭제`);
-                            await ctrl.ledClient.deleteFiles(toDelete);
-                        }
-                    }
-
-                    // 프로그램 송출 (다중 프로그램 적재)
-                    const screenWidth = mainVideoList[0]?.width || 128;
-                    const screenHeight = mainVideoList[0]?.height || 64;
-                    ctrl.ledClient.resetProgramHash();
-
-                    const maleFiles = fileRows.filter(f => f.GENDER === 'M');
-                    const femaleFiles = fileRows.filter(f => f.GENDER === 'F');
-                    const maleVideoList = await filesToVideoList(maleFiles);
-                    const femaleVideoList = await filesToVideoList(femaleFiles);
-
-                    const ok = await ctrl.ledClient.sendMultiplePrograms(mainVideoList, maleVideoList, femaleVideoList, screenWidth, screenHeight);
-
-                    if (ok) {
-                        ctrl.previousFileUrls = allCurrentUrls;
-                        ctrl.lastSentHash = crypto.createHash('md5').update(JSON.stringify(allCurrentUrls)).digest('hex');
-                        results.push({ vendorCd, vendorNm: ctrl.vendorNm, status: 'SUCCESS', message: '송출 완료' });
-                        log('PUSH-API', `[${ctrl.vendorNm}] ✅ 즉시 반영 성공 (공통/남/여 3개 프로그램 적재완료)`);
-                    } else {
-                        results.push({ vendorCd, vendorNm: ctrl.vendorNm, status: 'FAILED', message: '송출 실패' });
-                    }
-                } catch (err) {
-                    logError('PUSH-API', `[${ctrl.vendorNm}] 송출 에러: ${err.message}`);
-                    results.push({ vendorCd, vendorNm: ctrl.vendorNm, status: 'ERROR', message: err.message });
+                if (vendorSuccess) {
+                    results.push({ vendorCd, vendorNm: vendorNm, status: 'SUCCESS', message: '송출 완료' });
+                } else {
+                    results.push({ vendorCd, vendorNm: vendorNm, status: vendorError ? 'ERROR' : 'FAILED', message: vendorError || '송출 실패 또는 장비 연결 안됨' });
                 }
             }
 
@@ -1137,8 +1147,10 @@ async function main() {
 
             log('CCTV', `[SN:${serialNumber}→${vendorCd}] ${genderLabel} 지나감 감지 (새로 들어온 인원 - 남:${deltaMale} 여:${deltaFemale})`);
 
-            const ctrl = controllers.find(c => c.vendorCd === vendorCd);
-            if (!ctrl || !ctrl.ledClient.isReady()) {
+            const vendorControllers = controllers.filter(c => c.vendorCd === vendorCd);
+            const activeControllers = vendorControllers.filter(c => c.ledClient.isReady());
+
+            if (activeControllers.length === 0) {
                 log('CCTV', `[${vendorCd}] LED 미연결 → 성별 반영 스킵`);
                 return;
             }
@@ -1146,7 +1158,7 @@ async function main() {
             // 재생 중 방해 금지 (쿨타임 모드)
             // 현재 특정 성별 타겟 영상이 재생 중이고 아직 공통으로 복귀하지 않았다면 무시합니다.
             if (vendorRevertTimers[vendorCd]) {
-                log('CCTV', `[${ctrl.vendorNm}] ⏳ 타겟 영상 송출 중이므로 센서 이벤트 무시 (방해 금지)`);
+                log('CCTV', `[${vendorCd}] ⏳ 타겟 영상 송출 중이므로 센서 이벤트 무시 (방해 금지)`);
                 return;
             }
 
@@ -1154,35 +1166,43 @@ async function main() {
             const { selectedGenderFile, selectedIndex, nullFiles, allGenderFiles } = await getClosestGenderedAndNullFiles(vendorCd, dominantGender);
 
             if (!selectedGenderFile) {
-                log('CCTV', `[${ctrl.vendorNm}] 당일 스케줄 내 GENDER=${dominantGender} 콘텐츠 없음 → 스킵`);
+                log('CCTV', `[${vendorCd}] 당일 스케줄 내 GENDER=${dominantGender} 콘텐츠 없음 → 스킵`);
                 return;
             }
 
             // 2. 이미 적재된 개별 Program GUID로 즉각 스위칭
             const targetProgGuid = dominantGender === 'M' ? `prog_male_${selectedIndex}` : `prog_female_${selectedIndex}`;
-            log('CCTV', `[${ctrl.vendorNm}] ⚡ 즉각 스위칭 명령 전송: ${targetProgGuid} (랜덤 선택된 ${selectedIndex}번째 영상)`);
+            log('CCTV', `[${vendorCd}] ⚡ 즉각 스위칭 명령 전송: ${targetProgGuid} (대상: ${activeControllers.length}대)`);
 
             const genderedVideo = await filesToVideoList([selectedGenderFile]);
-            // IMAGE_DELAY 값을 우선적으로 사용하며, 값이 없으면 10초를 기본값으로 둡니다. (이미 filesToVideoList 내부에서 1차 처리됨)
+            // IMAGE_DELAY 값을 우선적으로 사용하며, 값이 없으면 10초를 기본값으로 둡니다.
             const playDurationMs = genderedVideo.length > 0 && genderedVideo[0].duration ? genderedVideo[0].duration : 10000;
 
-            let ok = await ctrl.ledClient.switchProgram(targetProgGuid);
+            let anySuccess = false;
+            for (const ctrl of activeControllers) {
+                let ok = await ctrl.ledClient.switchProgram(targetProgGuid);
+                if (ok) anySuccess = true;
+            }
 
-            if (ok) {
-                log('CCTV', `[${ctrl.vendorNm}] ✅ ${genderLabel} 타겟 영상 스위칭 완료 (${playDurationMs / 1000}초 대기 시작)`);
+            if (anySuccess) {
+                log('CCTV', `[${vendorCd}] ✅ ${genderLabel} 타겟 영상 스위칭 완료 (${playDurationMs / 1000}초 대기 시작)`);
                 vendorGenderCooldowns[vendorCd] = Date.now();
 
                 if (vendorRevertTimers[vendorCd]) clearTimeout(vendorRevertTimers[vendorCd]);
 
                 // 3. 재생시간 대기 후 원래 공통 프로그램(prog_null)으로 복귀
                 vendorRevertTimers[vendorCd] = setTimeout(async () => {
-                    log('CCTV', `[${ctrl.vendorNm}] 타겟 영상 재생 종료 → 공통 스케줄로 복귀 진행`);
-                    await ctrl.ledClient.switchProgram('prog_null');
-                    log('CCTV', `[${ctrl.vendorNm}] ✅ 공통 스케줄(prog_null) 복구 스위칭 완료`);
+                    log('CCTV', `[${vendorCd}] 타겟 영상 재생 종료 → 공통 스케줄로 복귀 진행`);
+                    for (const ctrl of activeControllers) {
+                        if (ctrl.ledClient.isReady()) {
+                            await ctrl.ledClient.switchProgram('prog_null');
+                        }
+                    }
+                    log('CCTV', `[${vendorCd}] ✅ 공통 스케줄(prog_null) 복구 스위칭 완료`);
                     delete vendorRevertTimers[vendorCd];
                 }, playDurationMs);
             } else {
-                log('CCTV', `[${ctrl.vendorNm}] ❌ 스위칭 실패 (보드 응답 없음)`);
+                log('CCTV', `[${vendorCd}] ❌ 스위칭 실패 (보드 응답 없음)`);
                 delete vendorRevertTimers[vendorCd];
             }
         } catch (err) {
