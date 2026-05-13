@@ -292,7 +292,7 @@ class HuiduLedClient {
                 const makeProgram = (progGuid, list, isHidden = false) => {
                     if (!list || list.length === 0) return '';
                     const tags = makeTags(list, progGuid);
-                    const playCount = isHidden ? 1 : 99999;
+                    const playCount = 99999;
                     return `<program guid="${progGuid}" type="normal"><playControl count="${playCount}"/><area guid="area-${progGuid}" alpha="255"><rectangle x="0" y="0" width="${screenWidth}" height="${screenHeight}"/><resources>${tags}</resources></area></program>`;
                 };
 
