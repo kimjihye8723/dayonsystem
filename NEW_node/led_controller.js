@@ -204,6 +204,50 @@ class HuiduLedClient {
     }
 
     /**
+     * 보드에 적재된 CMS 관리 외 구(舊) 프로그램 삭제 (DeleteProgram SDK 명령)
+     * - GetProgram으로 전체 프로그램 목록 조회 후
+     * - prog_null / prog_male_X / prog_female_X 가 아닌 것은 모두 DeleteProgram
+     */
+    async deleteOldPrograms() {
+        if (!this.sdkReady) return;
+        try {
+            // 1. 현재 보드의 전체 프로그램 목록 조회
+            const getXml = `<?xml version="1.0" encoding="utf-8"?><sdk guid="${this.guid}"><in method="GetProgram"/></sdk>`;
+            const result = await this._sendSdkCommand(getXml, 20000);
+
+            // 2. 모든 program GUID 추출
+            const allGuids = [...result.matchAll(/program[^>]*guid="([^"]+)"/g)].map(m => m[1]);
+
+            // 3. CMS가 관리하는 프로그램은 보호, 나머지는 삭제 대상
+            const OUR_PREFIX = ['prog_null', 'prog_male_', 'prog_female_'];
+            const toDelete = allGuids.filter(g => !OUR_PREFIX.some(prefix => g.startsWith(prefix)));
+
+            if (toDelete.length === 0) {
+                log('LED', `[${this.name}] 삭제할 구 프로그램 없음 (보드 정상)`);
+                return;
+            }
+
+            log('LED', `[${this.name}] 🗑️ 구 프로그램 ${toDelete.length}개 삭제 시작: ${toDelete.join(', ')}`);
+
+            // 4. 하나씩 DeleteProgram 호출
+            for (const guid of toDelete) {
+                try {
+                    const delXml = `<?xml version="1.0" encoding="utf-8"?><sdk guid="${this.guid}"><in method="DeleteProgram"><program guid="${guid}"/></in></sdk>`;
+                    await this._sendSdkCommand(delXml, 10000);
+                    log('LED', `[${this.name}]   ✅ 삭제 완료: "${guid}"`);
+                } catch (e) {
+                    // 개별 삭제 실패는 무시하고 계속 진행
+                    logError('LED', `[${this.name}]   ⚠️ 삭제 실패(무시): "${guid}" → ${e.message}`);
+                }
+            }
+            log('LED', `[${this.name}] 🗑️ 구 프로그램 정리 완료`);
+        } catch (err) {
+            // 조회 실패 시 삭제 없이 계속 진행 (안전하게 AddProgram은 그냥 진행)
+            logError('LED', `[${this.name}] deleteOldPrograms 조회 실패(무시): ${err.message}`);
+        }
+    }
+
+    /**
      * 비디오 프로그램 전송 (오프스크린 캐싱 포함)
      * @param {Array} mainList - 메인 화면 송출 영상 [{...}]
      * @param {Array} cacheList - 투명 캐시 영역에 사전 다운로드 시킬 영상 [{...}]
@@ -267,6 +311,9 @@ class HuiduLedClient {
                         progFemaleXml += makeProgram(`prog_female_${idx}`, [vid], true);
                     });
                 }
+
+                // AddProgram 전에 보드에 남은 구(舊) 프로그램 정리
+                await this.deleteOldPrograms();
 
                 // playControl을 통해 각각 독립된 프로그램으로 등록 (남/여는 무한루프 방지 위해 숨김)
                 // 단, AddProgram 완료 후 즉시 prog_null로 SwitchProgram을 강제 호출할 것임
