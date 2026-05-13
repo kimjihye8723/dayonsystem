@@ -293,10 +293,7 @@ class HuiduLedClient {
                     if (!list || list.length === 0) return '';
                     const tags = makeTags(list, progGuid);
                     const playCount = isHidden ? 1 : 99999;
-                    // disabled="true": 남성/여성 채널은 자동 순환 재생 방지
-                    // SwitchProgram으로만 강제 재생 가능, 재생 후 자동으로 prog_null로 복귀
-                    const disabledAttr = isHidden ? ' disabled="true"' : '';
-                    return `<program guid="${progGuid}" type="normal"><playControl count="${playCount}"${disabledAttr}/><area guid="area-${progGuid}" alpha="255"><rectangle x="0" y="0" width="${screenWidth}" height="${screenHeight}"/><resources>${tags}</resources></area></program>`;
+                    return `<program guid="${progGuid}" type="normal"><playControl count="${playCount}"/><area guid="area-${progGuid}" alpha="255"><rectangle x="0" y="0" width="${screenWidth}" height="${screenHeight}"/><resources>${tags}</resources></area></program>`;
                 };
 
                 const progNull = makeProgram('prog_null', nullList);
@@ -318,10 +315,11 @@ class HuiduLedClient {
                 // AddProgram 전에 보드에 남은 구(舊) 프로그램 정리
                 await this.deleteOldPrograms();
 
-                // playControl을 통해 각각 독립된 프로그램으로 등록 (남/여는 무한루프 방지 위해 숨김)
-                // 단, AddProgram 완료 후 즉시 prog_null로 SwitchProgram을 강제 호출할 것임
+                // 플레이리스트 순서: prog_male(count=1) → prog_female(count=1) → prog_null(count=99999, 무한루프)
+                // 성별 채널은 SwitchProgram으로 강제 재생, count=1 소진 후 보드가 다음으로 자동 진행
+                // 최종적으로 prog_null에 도달하면 99999번 루프 → 사실상 무한 기본 채널 재생
                 let xml = `<?xml version="1.0" encoding="utf-8"?><sdk guid="${this.guid}"><in method="AddProgram"><screen timeStamps="${Date.now()}">`;
-                xml += progNull + progMaleXml + progFemaleXml;
+                xml += progMaleXml + progFemaleXml + progNull;
                 xml += `</screen></in></sdk>`;
 
                 const result = await this._sendSdkCommand(xml);
