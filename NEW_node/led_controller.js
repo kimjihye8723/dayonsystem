@@ -289,11 +289,18 @@ class HuiduLedClient {
                     ).join('');
                 };
 
-                const makeProgram = (progGuid, list, isHidden = false) => {
+                const makeProgram = (progGuid, list, isHidden = false, customPlayCount = null) => {
                     if (!list || list.length === 0) return '';
                     const tags = makeTags(list, progGuid);
-                    const playCount = isHidden ? 1 : 99999;
+                    const playCount = customPlayCount !== null ? customPlayCount : (isHidden ? 1 : 99999);
                     return `<program guid="${progGuid}" type="normal"><playControl count="${playCount}"/><area guid="area-${progGuid}" alpha="255"><rectangle x="0" y="0" width="${screenWidth}" height="${screenHeight}"/><resources>${tags}</resources></area></program>`;
+                };
+
+                // 쉴드(클론)용: XML 용량 최소화를 위해 기본 영상 중 '첫 번째 영상 1개'만 포함시킵니다.
+                const makeShieldProgram = (progGuid, list) => {
+                    if (!list || list.length === 0) return '';
+                    const tags = makeTags([list[0]], progGuid);
+                    return `<program guid="${progGuid}" type="normal"><playControl count="99999"/><area guid="area-${progGuid}" alpha="255"><rectangle x="0" y="0" width="${screenWidth}" height="${screenHeight}"/><resources>${tags}</resources></area></program>`;
                 };
 
                 const progNull = makeProgram('prog_null', nullList);
@@ -301,27 +308,25 @@ class HuiduLedClient {
                 let progMaleXml = '';
                 if (maleList && maleList.length > 0) {
                     maleList.forEach((vid, idx) => {
-                        progMaleXml += makeProgram(`prog_male_${idx}`, [vid], true);
+                        progMaleXml += makeProgram(`prog_male_${idx}`, [vid], true, 1);
+                        progMaleXml += makeShieldProgram(`prog_null_m${idx}`, nullList);
                     });
                 }
 
                 let progFemaleXml = '';
                 if (femaleList && femaleList.length > 0) {
                     femaleList.forEach((vid, idx) => {
-                        progFemaleXml += makeProgram(`prog_female_${idx}`, [vid], true);
+                        progFemaleXml += makeProgram(`prog_female_${idx}`, [vid], true, 1);
+                        progFemaleXml += makeShieldProgram(`prog_null_f${idx}`, nullList);
                     });
                 }
-
-                // 만약 남/여 채널이 재생 후 다음 영상으로 자연스럽게 넘어갈 경우를 대비해,
-                // 리스트의 맨 마지막에 기본 채널을 한 번 더 배치합니다 (안전장치).
-                const progNullFallback = makeProgram('prog_null_fallback', nullList, false);
 
                 // AddProgram 전에 보드에 남은 구(舊) 프로그램 정리
                 await this.deleteOldPrograms();
 
-                // 순서: prog_null(기본) → 남성영상들 → 여성영상들 → prog_null_fallback(안전장치)
+                // 순서: prog_null(기본) → (남성영상1 -> 쉴드1) → (여성영상1 -> 쉴드2) ...
                 let xml = `<?xml version="1.0" encoding="utf-8"?><sdk guid="${this.guid}"><in method="AddProgram"><screen timeStamps="${Date.now()}">`;
-                xml += progNull + progMaleXml + progFemaleXml + progNullFallback;
+                xml += progNull + progMaleXml + progFemaleXml;
                 xml += `</screen></in></sdk>`;
 
                 const result = await this._sendSdkCommand(xml);
