@@ -83,9 +83,24 @@ router.delete('/vendors', (req, res) => {
     db.query(sql, vendorCds, (err, results) => {
         if (err) {
             console.error('[VENDOR DELETE ERROR]', err);
+            // FK 제약조건 에러 (errno 1451)
+            if (err.errno === 1451 || (err.message && err.message.includes('foreign key'))) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: '해당 거래처를 참조하는 데이터(스케줄, 디바이스, 사용자 등)가 있어 삭제할 수 없습니다. 관련 데이터를 먼저 삭제해주세요.' 
+                });
+            }
             return res.status(500).json({ success: false, message: '거래처 삭제 중 오류가 발생했습니다.', error: err.message });
         }
-        res.json({ success: true, message: '선택한 거래처가 성공적으로 삭제되었습니다.', affectedRows: results.affectedRows });
+        if (results.affectedRows === 0) {
+            return res.json({ success: false, message: '삭제된 거래처가 없습니다. 이미 삭제되었거나 존재하지 않는 거래처입니다.' });
+        }
+        const requested = vendorCds.length;
+        const deleted = results.affectedRows;
+        if (deleted < requested) {
+            return res.json({ success: true, message: `${requested}개 중 ${deleted}개만 삭제되었습니다. 일부 거래처는 관련 데이터가 있어 삭제되지 않았을 수 있습니다.`, affectedRows: deleted });
+        }
+        res.json({ success: true, message: '선택한 거래처가 성공적으로 삭제되었습니다.', affectedRows: deleted });
     });
 });
 

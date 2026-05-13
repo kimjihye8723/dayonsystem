@@ -1,0 +1,14 @@
+{
+  "name": "reverse-tcp-led-controller",
+  "version": "1.0.0",
+  "description": "역커넥트(Reverse TCP) 방식 LED 전광판 통합 제어 서버",
+  "main": "reverse_tcp_server.js",
+  "scripts": {
+    "start": "node reverse_tcp_server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mysql2": "^3.6.5"
+  }
+}

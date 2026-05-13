@@ -207,7 +207,17 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
                 });
                 if (res.data.success) {
                     alert('삭제되었습니다.');
-                    window.location.reload();
+                    // 실시간 반영: 목록 재조회 + 선택 상태 초기화
+                    setSelectedSchedule(null);
+                    setIsCreating(false);
+                    setSelectedVendorCodes([]);
+                    setDisplayedVendors([]);
+                    setGridData(DAYS.map(day => {
+                        const row: any = { DAY_SEC: day.id, DAY_NM: day.name };
+                        HOURS.forEach(h => row[`SCH_${h}`] = '');
+                        return row;
+                    }));
+                    await fetchSchedules();
                 }
             } catch (e: any) {
                 console.error('Delete schedule error:', e);
@@ -348,9 +358,7 @@ const AdScheduleSettingContent: React.FC<Props> = ({ theme }) => {
                             <div style={{ display: 'flex', gap: '2px', alignItems: 'center', flex: 1 }}>
                                 <input type="date" className="mgmt-input" value={searchStartDate} onChange={(e) => setSearchStartDate(e.target.value)} />
                                 <span style={{ fontSize: '10px' }}>~</span>
-                                <select className="mgmt-select">
-                                    <option value=""></option>
-                                </select>
+                                <input type="date" className="mgmt-input" value={searchEndDate} onChange={(e) => setSearchEndDate(e.target.value)} />
                             </div>
                         </div>
                         <div className="ass-filter-row">

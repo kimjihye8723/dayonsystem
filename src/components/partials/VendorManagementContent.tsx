@@ -230,10 +230,14 @@ const VendorManagementContent: React.FC<Props> = ({ theme: _theme }) => {
             setLoading(true);
             const res = await axios.delete('/api/vendors', { data: { vendorCds: [selectedVendor.VENDOR_CD] } });
             if (res.data.success) {
-                alert('삭제되었습니다.');
+                alert(res.data.message || '삭제되었습니다.');
                 setSelectedVendor(null);
                 setFormData({});
-                fetchVendors();
+                setVendorDevices([]);
+                setVendorManagers([]);
+                await fetchVendors();
+            } else {
+                alert(res.data.message || '삭제에 실패했습니다.');
             }
         } catch (err: any) {
             alert(err.response?.data?.message || '삭제 중 오류가 발생했습니다.');
