@@ -315,11 +315,10 @@ class HuiduLedClient {
                 // AddProgram 전에 보드에 남은 구(舊) 프로그램 정리
                 await this.deleteOldPrograms();
 
-                // 플레이리스트 순서: prog_male(count=1) → prog_female(count=1) → prog_null(count=99999, 무한루프)
-                // 성별 채널은 SwitchProgram으로 강제 재생, count=1 소진 후 보드가 다음으로 자동 진행
-                // 최종적으로 prog_null에 도달하면 99999번 루프 → 사실상 무한 기본 채널 재생
+                // 순서: prog_null(count=99999, 기본) → prog_male → prog_female
+                // AddProgram 후 즉시 switchProgram('prog_null')로 기본 채널 강제 시작
                 let xml = `<?xml version="1.0" encoding="utf-8"?><sdk guid="${this.guid}"><in method="AddProgram"><screen timeStamps="${Date.now()}">`;
-                xml += progMaleXml + progFemaleXml + progNull;
+                xml += progNull + progMaleXml + progFemaleXml;
                 xml += `</screen></in></sdk>`;
 
                 const result = await this._sendSdkCommand(xml);
