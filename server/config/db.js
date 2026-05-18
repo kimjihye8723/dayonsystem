@@ -1,5 +1,12 @@
 import mysql from 'mysql2';
-import 'dotenv/config';
+import { config as dotenvConfig } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+
+// .env를 항상 프로젝트 루트에서 로드 (pm2 실행 위치 무관)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenvConfig({ path: join(__dirname, '..', '..', '.env') });
 
 const db = mysql.createPool({
     host: process.env.DB_HOST,

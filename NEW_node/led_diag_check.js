@@ -10,7 +10,7 @@
 const net = require('net');
 
 // ── 접속 정보 (롯데시연 장비) ──────────────────────
-const TARGET_IP   = '223.171.64.228';
+const TARGET_IP   = 'smartgate1001.cns-link.net';
 const TARGET_PORT = 7003;
 const TCP_VERSION = 0x1000007;
 
@@ -173,8 +173,12 @@ async function main() {
     try {
         const xml = `<?xml version="1.0" encoding="utf-8"?><sdk guid="${guid}"><in method="GetCurrentPlayProgramGUID"/></sdk>`;
         const result = await sendSdkCommand(socket, xml);
-        // GUID 추출
-        const m = result.match(/guid="([^"]+)"/);
+        
+        console.log('  [원본 응답 XML]');
+        console.log(prettyXml(result));
+
+        // GUID 추출 (out 태그의 guid 파싱)
+        const m = result.match(/<out[^>]*guid="([^"]+)"/);
         const currentGuid = m ? m[1] : '(파싱 실패)';
         console.log(`  현재 재생 중: "${currentGuid}"`);
         if (currentGuid === 'prog_null')   console.log('  → 🟢 정상: 기본(공통) 채널 재생 중');

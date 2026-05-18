@@ -35,10 +35,10 @@ echo.
 
 echo [3/3] 백엔드 PM2 서비스 재시작 중...
 cd /d C:\inetpub\wwwroot\dayon-system
-call pm2 restart dayon-api
+call pm2 restart dayon-ap
 if %errorlevel% neq 0 (
-    :: dayon-api라는 이름이 없을 경우 0번으로 재시작 시도
-    call pm2 restart 0
+    :: dayon-ap라는 이름이 없을 경우 2번으로 재시작 시도
+    call pm2 restart 2
 )
 
 echo.

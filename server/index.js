@@ -1,17 +1,17 @@
 import express from 'express';
 import cors from 'cors';
-import 'dotenv/config';
+import { config as dotenvConfig } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
 
-// Trigger Vite reload on backend restart
-try {
-    const refreshPath = path.join(process.cwd(), 'src', 'refresh-trigger.ts');
-    fs.writeFileSync(refreshPath, `export const lastRestart = "${new Date().toISOString()}";`);
-} catch (e) {
-    console.error('Failed to update refresh-trigger.ts', e.message);
-}
+// .env를 항상 프로젝트 루트에서 로드 (pm2 실행 위치 무관)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+dotenvConfig({ path: join(__dirname, '..', '.env') });
+
 
 // Import view-based routers
 import authRouter from './views/Auth.js';
@@ -31,7 +31,7 @@ import realTimeStatusRouter from './views/RealTimeStatusContent.js';
 import cctvMgmtRouter from './views/CCTVManagementContent.js';
 
 const app = express();
-const PORT = process.env.PORT || 9100;
+const PORT = process.env.PORT || 5001;
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
